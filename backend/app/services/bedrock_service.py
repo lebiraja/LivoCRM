@@ -1,4 +1,4 @@
-"""Bedrock integration for generating CRM insights with deterministic fallback."""
+"""Bedrock integration for CRM insights and generic AI chat completion."""
 
 from __future__ import annotations
 
@@ -13,9 +13,88 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+# ── Shared Bedrock client (module-level lazy singleton) ─────────────────────
+_bedrock_client = None
+
+
+def _get_client():
+    global _bedrock_client
+    if _bedrock_client is None:
+        _bedrock_client = boto3.client(
+            "bedrock-runtime", region_name=settings.AWS_DEFAULT_REGION
+        )
+    return _bedrock_client
+
 
 class BedrockServiceError(RuntimeError):
     """Raised when Bedrock generation fails."""
+
+
+# ── Generic chat completion (used by AI engine) ─────────────────────────────
+
+
+def _extract_converse_text(response: dict[str, Any]) -> str:
+    content = response.get("output", {}).get("message", {}).get("content", [])
+    parts: list[str] = []
+    for chunk in content:
+        value = chunk.get("text")
+        if value:
+            parts.append(value)
+    return "\n".join(parts).strip()
+
+
+def chat_completion(
+    system_prompt: str,
+    messages: list[dict[str, str]],
+    *,
+    max_tokens: int | None = None,
+    temperature: float | None = None,
+    model_id: str | None = None,
+) -> str:
+    """Send a multi-turn conversation to Bedrock Converse and return the text.
+
+    Args:
+        system_prompt: System-level instruction for the model.
+        messages: List of {"role": "user"|"assistant", "content": "..."} dicts.
+        max_tokens: Override default max tokens.
+        temperature: Override default temperature.
+        model_id: Override default model.
+
+    Returns:
+        Raw text string from the model.
+
+    Raises:
+        BedrockServiceError: If the API call fails or returns empty text.
+    """
+    if not settings.BEDROCK_ENABLED:
+        raise BedrockServiceError("Bedrock is disabled by configuration")
+
+    client = _get_client()
+    formatted_messages = [
+        {"role": m["role"], "content": [{"text": m["content"]}]}
+        for m in messages
+    ]
+
+    try:
+        response = client.converse(
+            modelId=model_id or settings.BEDROCK_LLM_MODEL,
+            system=[{"text": system_prompt}],
+            messages=formatted_messages,
+            inferenceConfig={
+                "maxTokens": max_tokens or settings.BEDROCK_MAX_TOKENS,
+                "temperature": temperature if temperature is not None else settings.BEDROCK_TEMPERATURE,
+            },
+        )
+    except (ClientError, BotoCoreError) as exc:
+        raise BedrockServiceError(str(exc)) from exc
+
+    text = _extract_converse_text(response)
+    if not text:
+        raise BedrockServiceError("Bedrock response did not contain usable text")
+    return text
+
+
+# ── Dashboard insights (existing feature) ───────────────────────────────────
 
 
 def _build_prompt(metrics: dict[str, Any]) -> str:
@@ -34,21 +113,11 @@ def _extract_lines(text: str) -> list[str]:
     return lines[:3]
 
 
-def _extract_converse_text(response: dict[str, Any]) -> str:
-    content = response.get("output", {}).get("message", {}).get("content", [])
-    parts: list[str] = []
-    for chunk in content:
-        value = chunk.get("text")
-        if value:
-            parts.append(value)
-    return "\n".join(parts).strip()
-
-
 def generate_bedrock_insights(metrics: dict[str, Any]) -> list[str]:
     if not settings.BEDROCK_ENABLED:
         raise BedrockServiceError("Bedrock is disabled by configuration")
 
-    client = boto3.client("bedrock-runtime", region_name=settings.AWS_DEFAULT_REGION)
+    client = _get_client()
     prompt = _build_prompt(metrics)
 
     try:

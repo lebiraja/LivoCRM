@@ -5,5 +5,9 @@ from app.models.contact import Contact
 from app.models.deal import Deal
 from app.models.activity import Activity
 from app.models.pipeline import PipelineStage
+from app.models.chat import ChatSession, ChatMessage, ChatAction
 
-__all__ = ["User", "Contact", "Deal", "Activity", "PipelineStage"]
+__all__ = [
+    "User", "Contact", "Deal", "Activity", "PipelineStage",
+    "ChatSession", "ChatMessage", "ChatAction",
+]
