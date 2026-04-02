@@ -3,16 +3,17 @@ services:
   # ── PostgreSQL ───────────────────────────────────────────────────────────
   db:
     image: postgres:16-alpine
+    env_file: .env
     environment:
-      POSTGRES_USER: livocrm_user
-      POSTGRES_PASSWORD: supersecretpassword
-      POSTGRES_DB: livocrm
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
       - "5435:5432"   # host 5435 — free (5432/5433 taken by other projects)
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U livocrm_user -d livocrm"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       retries: 5
     networks:
