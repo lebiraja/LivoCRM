@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     AWS_SECRET_ACCESS_KEY: str = ""
     AWS_DEFAULT_REGION: str = "us-east-1"
     BEDROCK_LLM_MODEL: str = "us.meta.llama4-scout-17b-instruct-v1:0"
+    BEDROCK_ENABLED: bool = True
+    BEDROCK_MAX_TOKENS: int = 220
+    BEDROCK_TEMPERATURE: float = 0.2
 
 
 settings = Settings()
