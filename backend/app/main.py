@@ -1,0 +1,53 @@
+"""LivoCRM — FastAPI entry point."""
+
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.routers import (
+    auth_router,
+    contacts_router,
+    deals_router,
+    activities_router,
+    analytics_router,
+    ai_router,
+)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # startup: import models so Alembic sees them
+    import app.models  # noqa: F401
+    yield
+    # shutdown
+
+
+app = FastAPI(
+    title="LivoCRM API",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+# ── CORS ────────────────────────────────────────────────────────────────────
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://localhost"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ── Routers ─────────────────────────────────────────────────────────────────
+API = "/api"
+app.include_router(auth_router, prefix=API)
+app.include_router(contacts_router, prefix=API)
+app.include_router(deals_router, prefix=API)
+app.include_router(activities_router, prefix=API)
+app.include_router(analytics_router, prefix=API)
+app.include_router(ai_router, prefix=API)
+
+
+@app.get("/api/health")
+async def health():
+    return {"status": "ok"}

@@ -1,0 +1,39 @@
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ── Env ──
+.env
+*.env.local
+
+# ── Virtualenv ──
+venv/
+.venv/
+
+# ── IDE ──
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ── DB ──
+db.sqlite3
+
+# ── Node / Frontend ──
+node_modules/
+frontend/dist/
+.next/
+
+# ── ML artifacts ──
+ml/*.pkl
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+
+# ── Docker ──
+*.log
