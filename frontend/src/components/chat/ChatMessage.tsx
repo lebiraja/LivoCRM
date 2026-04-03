@@ -2,16 +2,13 @@ import { motion } from "framer-motion";
 import { Bot, User } from "lucide-react";
 import type { ChatMessage as ChatMessageType } from "@/types";
 import { cn } from "@/lib/utils";
-import { ConfirmationCard } from "./ConfirmationCard";
 
 interface Props {
   message: ChatMessageType;
-  onConfirm?: (id: string) => void;
-  onDismiss?: (id: string) => void;
 }
 
-export function ChatMessage({ message, onConfirm, onDismiss }: Props) {
-  const isUser = message.source === "user";
+export function ChatMessage({ message }: Props) {
+  const isUser = message.role === "user";
 
   return (
     <motion.div
@@ -37,15 +34,6 @@ export function ChatMessage({ message, onConfirm, onDismiss }: Props) {
         )}
       >
         <p className="whitespace-pre-wrap">{message.content}</p>
-
-        {/* Confirmation card inline */}
-        {message.confirmation && onConfirm && onDismiss && (
-          <ConfirmationCard
-            confirmation={message.confirmation}
-            onConfirm={onConfirm}
-            onDismiss={onDismiss}
-          />
-        )}
       </div>
 
       {/* User avatar */}

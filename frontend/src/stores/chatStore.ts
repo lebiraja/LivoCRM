@@ -1,12 +1,11 @@
 import { create } from "zustand";
-import type { ChatSession, ChatMessage, WsStatus, ConfirmationRequest } from "@/types";
+import type { ChatSession, ChatMessage, WsStatus } from "@/types";
 
 interface ChatState {
   /* --- Data --- */
   sessions: ChatSession[];
   activeSessionId: string | null;
   messages: ChatMessage[];
-  pendingConfirmations: ConfirmationRequest[];
 
   /* --- UI state --- */
   loading: boolean;
@@ -20,8 +19,6 @@ interface ChatState {
   setMessages: (messages: ChatMessage[]) => void;
   addMessage: (message: ChatMessage) => void;
   updateLastAiMessage: (content: string) => void;
-  addConfirmation: (c: ConfirmationRequest) => void;
-  removeConfirmation: (id: string) => void;
   setLoading: (loading: boolean) => void;
   setStreaming: (streaming: boolean) => void;
   setWsStatus: (status: WsStatus) => void;
@@ -32,7 +29,6 @@ const initialState = {
   sessions: [] as ChatSession[],
   activeSessionId: null as string | null,
   messages: [] as ChatMessage[],
-  pendingConfirmations: [] as ConfirmationRequest[],
   loading: false,
   streaming: false,
   wsStatus: "disconnected" as WsStatus,
@@ -54,20 +50,13 @@ export const useChatStore = create<ChatState>((set) => ({
     set((s) => {
       const msgs = [...s.messages];
       for (let i = msgs.length - 1; i >= 0; i--) {
-        if (msgs[i].source === "ai") {
+        if (msgs[i].role === "assistant") {
           msgs[i] = { ...msgs[i], content };
           break;
         }
       }
       return { messages: msgs };
     }),
-
-  addConfirmation: (c) =>
-    set((s) => ({ pendingConfirmations: [...s.pendingConfirmations, c] })),
-  removeConfirmation: (id) =>
-    set((s) => ({
-      pendingConfirmations: s.pendingConfirmations.filter((c) => c.id !== id),
-    })),
 
   setLoading: (loading) => set({ loading }),
   setStreaming: (streaming) => set({ streaming }),

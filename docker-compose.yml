@@ -19,12 +19,28 @@ services:
     networks:
       - livocrm
 
+  # ── Redis (session cache + future pub/sub) ───────────────────────────────
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+    networks:
+      - livocrm
+    restart: unless-stopped
+
   # ── FastAPI backend ──────────────────────────────────────────────────────
   backend:
     build: ./backend
     env_file: .env
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - livocrm
@@ -55,6 +71,7 @@ services:
 
 volumes:
   pgdata:
+  redisdata:
 
 networks:
   livocrm:

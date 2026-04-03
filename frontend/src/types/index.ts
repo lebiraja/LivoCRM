@@ -22,6 +22,10 @@ export interface Contact {
   tags: string[];
   notes: string | null;
   lead_score: number | null;
+  /** How the contact was created: "manual" | "ai_chat" */
+  source?: string | null;
+  /** Chat session that created this contact, if any */
+  ai_session_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -53,6 +57,10 @@ export interface Deal {
   status: DealStatus;
   contact_id: string;
   notes: string | null;
+  /** How the deal was created: "manual" | "ai_chat" */
+  source?: string | null;
+  /** Chat session that created this deal, if any */
+  ai_session_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -132,45 +140,54 @@ export type StageBreakdown = { stage_name: string; count: number; total_value: n
 export type RevenueForecast = { month: string; projected: number; actual: number };
 
 // ---------- Chat ----------
-export type ChatSource = "user" | "ai";
+export type ChatRole = "user" | "assistant";
 export type WsStatus = "connecting" | "connected" | "disconnected";
 
 export interface ChatSession {
   id: string;            // UUID
   title: string;
-  preview: string;
+  status: string;        // "active" | "archived"
   created_at: string;
   updated_at: string;
-}
-
-export type AIActionType =
-  | "create_contact"
-  | "update_contact"
-  | "create_deal"
-  | "update_deal"
-  | "log_activity"
-  | "score_contact";
-
-export interface AIAction {
-  id: string;
-  type: AIActionType;
-  entity: string;       // e.g. "contact", "deal"
-  fields: Record<string, unknown>;
-  description: string;
-}
-
-export interface ConfirmationRequest {
-  id: string;
-  session_id: string;
-  action: AIAction;
-  created_at: string;
+  message_count: number;
 }
 
 export interface ChatMessage {
   id: string;          // UUID or temp id
   session_id: string;
-  source: ChatSource;
+  role: ChatRole;
   content: string;
-  confirmation?: ConfirmationRequest | null;
+  intent?: string | null;
   created_at: string;
+}
+
+/** Response from POST /chat/sessions/{id}/message */
+export interface ChatSendResponse {
+  session_id: string;
+  user_message: ChatMessage;
+  ai_message: ChatMessage;
+  session_state: string;
+  intent: string | null;
+  extracted_data: Record<string, unknown>;
+  missing_fields: string[];
+  ready_to_save: boolean;
+}
+
+/** A CRM action the AI wants permission to execute */
+export interface AIActionPayload {
+  /** e.g. "create_contact", "create_deal", "update_contact" */
+  type: string;
+  /** Human-readable entity name: "Contact", "Deal", … */
+  entity: string;
+  /** One-sentence description shown to the user */
+  description: string;
+  /** Structured data the action will use */
+  data: Record<string, unknown>;
+}
+
+/** Pending confirmation card shown in the chat UI */
+export interface ConfirmationRequest {
+  /** Unique id for this pending confirmation (UUID or temp id) */
+  id: string;
+  action: AIActionPayload;
 }

@@ -1,5 +1,10 @@
 import client from "./client";
-import type { ChatSession, ChatMessage } from "@/types";
+import type { ChatSession, ChatMessage, ChatSendResponse } from "@/types";
+
+/** Backend response shape for GET /chat/sessions/{id} */
+interface ChatSessionDetail extends ChatSession {
+  messages: ChatMessage[];
+}
 
 export const chatApi = {
   /** List all sessions for the current user. */
@@ -9,40 +14,28 @@ export const chatApi = {
   },
 
   /** Create a new chat session. */
-  createSession: async (title?: string): Promise<ChatSession> => {
-    const { data } = await client.post<ChatSession>("/chat/sessions", {
-      title: title || "New Chat",
-    });
+  createSession: async (): Promise<ChatSession> => {
+    const { data } = await client.post<ChatSession>("/chat/sessions");
     return data;
   },
 
-  /** Get messages for a session. */
+  /** Get messages for a session (via session detail endpoint). */
   getMessages: async (sessionId: string): Promise<ChatMessage[]> => {
-    const { data } = await client.get<ChatMessage[]>(
-      `/chat/sessions/${sessionId}/messages`
+    const { data } = await client.get<ChatSessionDetail>(
+      `/chat/sessions/${sessionId}`
     );
-    return data;
+    return data.messages;
   },
 
-  /** Send a message (non-streaming fallback). */
+  /** Send a message and receive the AI response. */
   sendMessage: async (
     sessionId: string,
-    content: string
-  ): Promise<ChatMessage> => {
-    const { data } = await client.post<ChatMessage>(
-      `/chat/sessions/${sessionId}/messages`,
-      { content }
+    message: string
+  ): Promise<ChatSendResponse> => {
+    const { data } = await client.post<ChatSendResponse>(
+      `/chat/sessions/${sessionId}/message`,
+      { message }
     );
     return data;
-  },
-
-  /** Confirm an AI-proposed action. */
-  confirmAction: async (confirmationId: string): Promise<void> => {
-    await client.post(`/chat/confirmations/${confirmationId}/confirm`);
-  },
-
-  /** Dismiss an AI-proposed action. */
-  dismissAction: async (confirmationId: string): Promise<void> => {
-    await client.post(`/chat/confirmations/${confirmationId}/dismiss`);
   },
 };

@@ -20,8 +20,6 @@ export default function ChatPage() {
     selectSession,
     newSession,
     sendMessage,
-    confirmAction,
-    dismissAction,
   } = useChat();
 
   // Load sessions on mount
@@ -100,12 +98,7 @@ export default function ChatPage() {
           )}
 
           {messages.map((msg) => (
-            <ChatMessage
-              key={msg.id}
-              message={msg}
-              onConfirm={confirmAction}
-              onDismiss={dismissAction}
-            />
+            <ChatMessage key={msg.id} message={msg} />
           ))}
 
           {streaming && <ChatTypingIndicator />}

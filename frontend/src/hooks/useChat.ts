@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useChatStore } from "@/stores/chatStore";
 import { chatApi } from "@/api/chat";
 import { useWebSocket } from "./useWebSocket";
-import type { ChatMessage, ConfirmationRequest } from "@/types";
+import type { ChatMessage } from "@/types";
 
 /**
  * Orchestration hook – ties together the chat store, REST API,
@@ -13,7 +13,6 @@ export function useChat() {
     sessions,
     activeSessionId,
     messages,
-    pendingConfirmations,
     loading,
     streaming,
     wsStatus,
@@ -23,8 +22,6 @@ export function useChat() {
     setMessages,
     addMessage,
     updateLastAiMessage,
-    addConfirmation,
-    removeConfirmation,
     setLoading,
     setStreaming,
   } = useChatStore();
@@ -53,22 +50,13 @@ export function useChat() {
         addMessage({
           id: `temp-${Date.now()}`,
           session_id: activeSessionId || "",
-          source: "ai",
+          role: "assistant",
           content: "",
           created_at: new Date().toISOString(),
         });
-      } else if (type === "confirmation") {
-        const conf = data.confirmation as ConfirmationRequest;
-        addConfirmation(conf);
       }
     },
-    [
-      activeSessionId,
-      addMessage,
-      updateLastAiMessage,
-      addConfirmation,
-      setStreaming,
-    ]
+    [activeSessionId, addMessage, updateLastAiMessage, setStreaming]
   );
 
   const { send } = useWebSocket({
@@ -121,9 +109,10 @@ export function useChat() {
       const localSession = {
         id: `local-${Date.now()}`,
         title: "New Chat",
-        preview: "",
+        status: "active",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        message_count: 0,
       };
       addSession(localSession);
       setActiveSessionId(localSession.id);
@@ -139,7 +128,7 @@ export function useChat() {
       const userMsg: ChatMessage = {
         id: `user-${Date.now()}`,
         session_id: activeSessionId || "",
-        source: "user",
+        role: "user",
         content: content.trim(),
         created_at: new Date().toISOString(),
       };
@@ -151,16 +140,18 @@ export function useChat() {
       } else {
         setStreaming(true);
         try {
-          const reply = await chatApi.sendMessage(
+          const response = await chatApi.sendMessage(
             activeSessionId || "",
             content.trim()
           );
-          addMessage(reply);
+          // Backend returns both messages; replace the optimistic user msg
+          // and add the AI response
+          addMessage(response.ai_message);
         } catch {
           addMessage({
             id: `err-${Date.now()}`,
             session_id: activeSessionId || "",
-            source: "ai",
+            role: "assistant",
             content:
               "Sorry, I couldn't process your message. Please try again.",
             created_at: new Date().toISOString(),
@@ -173,38 +164,11 @@ export function useChat() {
     [activeSessionId, wsStatus, send, addMessage, setStreaming]
   );
 
-  /** Confirm a proposed AI action. */
-  const confirmAction = useCallback(
-    async (confirmationId: string) => {
-      try {
-        await chatApi.confirmAction(confirmationId);
-      } catch {
-        /* noop */
-      }
-      removeConfirmation(confirmationId);
-    },
-    [removeConfirmation]
-  );
-
-  /** Dismiss a proposed AI action. */
-  const dismissAction = useCallback(
-    async (confirmationId: string) => {
-      try {
-        await chatApi.dismissAction(confirmationId);
-      } catch {
-        /* noop */
-      }
-      removeConfirmation(confirmationId);
-    },
-    [removeConfirmation]
-  );
-
   return {
     /* state */
     sessions,
     activeSessionId,
     messages,
-    pendingConfirmations,
     loading,
     streaming,
     wsStatus,
@@ -215,7 +179,5 @@ export function useChat() {
     selectSession,
     newSession,
     sendMessage,
-    confirmAction,
-    dismissAction,
   };
 }

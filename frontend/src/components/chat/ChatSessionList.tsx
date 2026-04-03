@@ -47,7 +47,7 @@ export function ChatSessionList({ sessions, activeId, onSelect, onNew }: Props) 
             <MessageSquare size={14} className="shrink-0" />
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium">{s.title}</p>
-              <p className="truncate text-xs opacity-60">{s.preview || "—"}</p>
+              <p className="truncate text-xs opacity-60">{s.message_count} messages</p>
             </div>
           </motion.button>
         ))}
