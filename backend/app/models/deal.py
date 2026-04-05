@@ -29,6 +29,19 @@ class Deal(Base):
     expected_close: Mapped[date | None] = mapped_column(Date, nullable=True)
     notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
+    # ── AI-assisted creation provenance ─────────────────────────────────────
+    # "manual" (default) | "ai_chat" — how this record was created
+    source: Mapped[str] = mapped_column(
+        String(30), nullable=False, server_default="manual"
+    )
+    # FK to chat_sessions.id — populated when source == "ai_chat"
+    ai_session_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("chat_sessions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )
@@ -40,3 +53,4 @@ class Deal(Base):
     user = relationship("User", back_populates="deals")
     contact = relationship("Contact", back_populates="deals")
     activities = relationship("Activity", back_populates="deal")
+

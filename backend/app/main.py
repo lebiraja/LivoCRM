@@ -12,6 +12,8 @@ from app.routers import (
     activities_router,
     analytics_router,
     ai_router,
+    chat_router,
+    ws_router,
 )
 
 
@@ -51,6 +53,8 @@ app.include_router(deals_router, prefix=API)
 app.include_router(activities_router, prefix=API)
 app.include_router(analytics_router, prefix=API)
 app.include_router(ai_router, prefix=API)
+app.include_router(chat_router, prefix=API)
+app.include_router(ws_router)  # WebSocket — no /api prefix (served at /ws/...)
 
 
 @app.get("/api/health")

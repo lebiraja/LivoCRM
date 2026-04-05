@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    :root {
+      --text-color: #1a1a1a;
+      --heading-color: #E67E22;
+      --link-color: #0066cc;
+      --code-bg: #f5f5f5;
+      --border-color: #ddd;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--text-color);
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+      background: #fff;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      color: var(--heading-color);
+      margin-top: 1.5em;
+      margin-bottom: 0.5em;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    h1 {
+      font-size: 2em;
+      border-bottom: 2px solid var(--heading-color);
+      padding-bottom: 0.3em;
+    }
+
+    h2 {
+      font-size: 1.75em;
+    }
+
+    h3 {
+      font-size: 1.5em;
+    }
+
+    h4 {
+      font-size: 1.25em;
+    }
+
+    p {
+      margin: 1em 0;
+    }
+
+    a {
+      color: var(--link-color);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    code {
+      font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 0.9em;
+      background: var(--code-bg);
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+    }
+
+    pre {
+      background: var(--code-bg);
+      padding: 1em;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 1em 0;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      font-size: 0.875em;
+      line-height: 1.5;
+    }
+
+    blockquote {
+      margin: 1em 0;
+      padding: 0.5em 1em;
+      border-left: 4px solid var(--heading-color);
+      background: #f9f9f9;
+    }
+
+    blockquote p {
+      margin: 0.5em 0;
+    }
+
+    ul, ol {
+      margin: 1em 0;
+      padding-left: 2em;
+    }
+
+    li {
+      margin: 0.25em 0;
+    }
+
+    li > ul, li > ol {
+      margin: 0.25em 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1em 0;
+    }
+
+    th, td {
+      border: 1px solid var(--border-color);
+      padding: 0.75em;
+      text-align: left;
+    }
+
+    th {
+      background: var(--code-bg);
+      font-weight: 600;
+    }
+
+    tr:nth-child(even) {
+      background: #fafafa;
+    }
+
+    hr {
+      border: none;
+      border-top: 2px solid var(--border-color);
+      margin: 2em 0;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .task-list-item {
+      list-style: none;
+      margin-left: -1.5em;
+    }
+
+    .task-list-item input[type="checkbox"] {
+      margin-right: 0.5em;
+    }
+
+    del {
+      color: #999;
+    }
+
+    @media print {
+      body {
+        max-width: none;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+<h1>Academic Project Report: Database Management System for Renewable Energy Client Relationship Management (LivoCRM)</h1>
+<h2>1. Introduction</h2>
+<h3>1.1 Problem Statement</h3>
+<p>In the rapidly growing renewable energy sector, Managing complex Business-to-Business (B2B) client relationships, multi-stage solar installation deals, and continuous sales activities requires a robust, scalable, and intelligent system. Traditional spreadsheet-based methods of managing energy clients lead to scattered data, missed follow-ups, and an inability to accurately forecast revenue based on deal pipeline progression. Furthermore, sales representatives often struggle with manual data entry, which detracts from their core task of building client relationships and closing energy infrastructure deals. This creates an urgent necessity for an integrated Database Management System (DBMS) capable of tracking clients, evaluating lead opportunities, charting pipeline stages, and utilizing AI-driven analytics to optimize the sales process.</p>
+<h3>1.2 Domain Explanation (Energy)</h3>
+<p>This project focuses on the <strong>Energy</strong> domain, specifically tailored as an Energy Client Relationship Management (CRM) system for organizations providing solar panels, wind turbine installations, and energy efficiency consulting to commercial clients. In this domain, a "Deal" represents a potential contract to install renewable energy infrastructure. A "Contact" represents a facility manager or corporate decision-maker. The pipeline stages define the lifecycle of energy infrastructure sales—from initial lead qualification, site assessment (proposal), contract negotiation, to closed-won execution.</p>
+<h3>1.3 Objectives of the System</h3>
+<p>The primary objectives of the LivoCRM Database Management System include:</p>
+<ol>
+<li><strong>Centralized Data Repository:</strong> To provide a single source of truth for all B2B contacts, activities, and commercial energy deals.</li>
+<li><strong>Pipeline and Sales Tracking:</strong> To implement a structured deal lifecycle that allows energy sales representatives to move prospective contracts through configurable pipeline stages.</li>
+<li><strong>Data Integrity and Consistency:</strong> To utilize relational database constraints, foreign keys, and Normalization principles to prevent data anomalies and orphaned records.</li>
+<li><strong>AI-Assisted Operations:</strong> To integrate intelligent chat models that can autonomously add leads, track activities, and summarize the health of the energy deal pipeline.</li>
+<li><strong>Real-time Analytics:</strong> To leverage complex SQL aggregations to calculate win rates, weighted revenue forecasts, and summary KPIs instantly.</li>
+</ol>
+<h3>1.4 Real-World Relevance</h3>
+<p>In enterprise energy project development, sales cycles span months and involve millions of dollars. Misplacing a note or incorrectly anticipating the probability of a deal closure can significantly impact quarterly revenues and resource planning. By applying advanced DBMS principles, this system ensures high availability, atomicity of transactions, data reliability, and offers AI-driven insights that directly augment commercial efficiency.</p>
+<hr>
+<h2>2. Entity-Relationship (ER) Design</h2>
+<p>The ER design translates the business logic of our Energy CRM into a structured blueprint. The model defines the fundamental entities participating in the system and maps out how they interact.</p>
+<h3>2.1 Entities and Attributes</h3>
+<ol>
+<li><strong>User:</strong> Represents the energy sales representatives and administrators.
+<ul>
+<li><em>Attributes:</em> <code>id</code> (Primary Key), <code>email</code>, <code>hashed_password</code>, <code>full_name</code>, <code>plan</code>, <code>created_at</code>, <code>updated_at</code>.</li>
+</ul>
+</li>
+<li><strong>Contact:</strong> Represents a client, such as a localized facility manager or a multinational corporation's procurement officer.
+<ul>
+<li><em>Attributes:</em> <code>id</code> (Primary Key), <code>user_id</code> (Foreign Key), <code>name</code>, <code>email</code>, <code>phone</code>, <code>company</code>, <code>tags</code>, <code>lead_score</code>, <code>notes</code>, <code>source</code>, <code>ai_session_id</code>, <code>created_at</code>, <code>updated_at</code>.</li>
+</ul>
+</li>
+<li><strong>Deal:</strong> Represents a prospective energy project or contract.
+<ul>
+<li><em>Attributes:</em> <code>id</code> (Primary Key), <code>user_id</code> (Foreign Key), <code>contact_id</code> (Foreign Key), <code>title</code>, <code>value</code> (monetary magnitude of the installation), <code>stage</code>, <code>status</code>, <code>expected_close</code>, <code>notes</code>, <code>source</code>, <code>ai_session_id</code>, <code>created_at</code>, <code>updated_at</code>.</li>
+</ul>
+</li>
+<li><strong>PipelineStage:</strong> Defines the sequence of steps an energy deal goes through.
+<ul>
+<li><em>Attributes:</em> <code>id</code> (Primary Key), <code>user_id</code> (Foreign Key), <code>name</code>, <code>position</code>, <code>created_at</code>.</li>
+</ul>
+</li>
+<li><strong>Activity:</strong> Represents interactions (meetings, site assessments, calls) associated with a contact or deal.
+<ul>
+<li><em>Attributes:</em> <code>id</code> (Primary Key), <code>user_id</code> (Foreign Key), <code>contact_id</code> (Foreign Key), <code>deal_id</code> (Foreign Key), <code>type</code>, <code>description</code>, <code>occurred_at</code>, <code>created_at</code>.</li>
+</ul>
+</li>
+<li><strong>ChatSession &#x26; ChatMessage:</strong> Represents AI interactions logging autonomous data generation.
+<ul>
+<li><em>Attributes (Session):</em> <code>id</code> (Primary Key), <code>user_id</code> (Foreign Key), <code>title</code>, <code>status</code>, <code>created_at</code>, <code>updated_at</code>.</li>
+<li><em>Attributes (Message):</em> <code>id</code> (Primary Key), <code>session_id</code> (Foreign Key), <code>role</code>, <code>content</code>, <code>intent</code>, <code>created_at</code>.</li>
+</ul>
+</li>
+</ol>
+<h3>2.2 Relationships</h3>
+<ul>
+<li><strong>User to Contact (1:N):</strong> One sales rep manages multiple contacts.</li>
+<li><strong>User to Deal (1:N):</strong> One user oversees multiple energy contracts.</li>
+<li><strong>Contact to Deal (1:N):</strong> One corporate client can have multiple separate solar installations/deals over time.</li>
+<li><strong>Deal to Activity (1:N):</strong> Multiple site assessments and meetings can happen for one deal.</li>
+<li><strong>Contact to Activity (1:N):</strong> Various emails and phone calls are logged under a specific contact.</li>
+<li><strong>User to ChatSession (1:N):</strong> A user can initiate multiple AI chat threads.</li>
+<li><strong>ChatSession to ChatMessage (1:N):</strong> A session contains a sequence of messages.</li>
+</ul>
+<h3>2.3 ER Diagram</h3>
+<pre class="shiki github-light" style="background-color:#fff;color:#24292e" tabindex="0"><code><span class="line"><span>erDiagram</span></span>
+<span class="line"><span>    USER ||--o{ CONTACT : manages</span></span>
+<span class="line"><span>    USER ||--o{ DEAL : owns</span></span>
+<span class="line"><span>    USER ||--o{ PIPELINE_STAGE : configures</span></span>
+<span class="line"><span>    USER ||--o{ ACTIVITY : performs</span></span>
+<span class="line"><span>    USER ||--o{ CHAT_SESSION : initiates</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    CONTACT ||--o{ DEAL : has</span></span>
+<span class="line"><span>    CONTACT ||--o{ ACTIVITY : involves</span></span>
+<span class="line"><span>    </span></span>
+<span class="line"><span>    DEAL ||--o{ ACTIVITY : logs</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    CHAT_SESSION ||--o{ CHAT_MESSAGE : contains</span></span>
+<span class="line"><span>    CHAT_SESSION ||--o{ CONTACT : generates</span></span>
+<span class="line"><span>    CHAT_SESSION ||--o{ DEAL : generates</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    USER {</span></span>
+<span class="line"><span>        uuid id PK</span></span>
+<span class="line"><span>        string email</span></span>
+<span class="line"><span>        string full_name</span></span>
+<span class="line"><span>        string plan</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>    CONTACT {</span></span>
+<span class="line"><span>        uuid id PK</span></span>
+<span class="line"><span>        uuid user_id FK</span></span>
+<span class="line"><span>        uuid ai_session_id FK</span></span>
+<span class="line"><span>        string name</span></span>
+<span class="line"><span>        string company</span></span>
+<span class="line"><span>        int lead_score</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>    DEAL {</span></span>
+<span class="line"><span>        uuid id PK</span></span>
+<span class="line"><span>        uuid user_id FK</span></span>
+<span class="line"><span>        uuid contact_id FK</span></span>
+<span class="line"><span>        uuid ai_session_id FK</span></span>
+<span class="line"><span>        string title</span></span>
+<span class="line"><span>        float value</span></span>
+<span class="line"><span>        string stage</span></span>
+<span class="line"><span>        date expected_close</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>    ACTIVITY {</span></span>
+<span class="line"><span>        uuid id PK</span></span>
+<span class="line"><span>        uuid user_id FK</span></span>
+<span class="line"><span>        uuid contact_id FK</span></span>
+<span class="line"><span>        uuid deal_id FK</span></span>
+<span class="line"><span>        string type</span></span>
+<span class="line"><span>        string description</span></span>
+<span class="line"><span>        datetime occurred_at</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>    PIPELINE_STAGE {</span></span>
+<span class="line"><span>        uuid id PK</span></span>
+<span class="line"><span>        uuid user_id FK</span></span>
+<span class="line"><span>        string name</span></span>
+<span class="line"><span>        int position</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>    CHAT_SESSION {</span></span>
+<span class="line"><span>        uuid id PK</span></span>
+<span class="line"><span>        uuid user_id FK</span></span>
+<span class="line"><span>        string title</span></span>
+<span class="line"><span>        string status</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>    CHAT_MESSAGE {</span></span>
+<span class="line"><span>        uuid id PK</span></span>
+<span class="line"><span>        uuid session_id FK</span></span>
+<span class="line"><span>        string role</span></span>
+<span class="line"><span>        string content</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span></span></span></code></pre>
+<hr>
+<h2>3. Database Schema</h2>
+<p>The physical schema is designed for PostgreSQL, utilizing robust data definition language (DDL) features such as UUID enhancements and comprehensive foreign key constraints cascaded effectively to prevent orphaned tuples.</p>
+<h3>3.1 Table: users</h3>
+<p>Stores application users (energy firm sales staff).</p>
+<pre class="shiki github-light" style="background-color:#fff;color:#24292e" tabindex="0"><code><span class="line"><span style="color:#D73A49">CREATE</span><span style="color:#D73A49"> TABLE</span><span style="color:#6F42C1"> users</span><span style="color:#24292E"> (</span></span>
+<span class="line"><span style="color:#24292E">    id UUID </span><span style="color:#D73A49">PRIMARY KEY</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#24292E"> gen_random_uuid(),</span></span>
+<span class="line"><span style="color:#24292E">    email </span><span style="color:#D73A49">VARCHAR</span><span style="color:#24292E">(</span><span style="color:#005CC5">255</span><span style="color:#24292E">) </span><span style="color:#D73A49">UNIQUE</span><span style="color:#D73A49"> NOT NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    hashed_password </span><span style="color:#D73A49">TEXT</span><span style="color:#D73A49"> NOT NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    full_name </span><span style="color:#D73A49">VARCHAR</span><span style="color:#24292E">(</span><span style="color:#005CC5">255</span><span style="color:#24292E">) </span><span style="color:#D73A49">NOT NULL</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#032F62"> ''</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    plan </span><span style="color:#D73A49">VARCHAR</span><span style="color:#24292E">(</span><span style="color:#005CC5">20</span><span style="color:#24292E">) </span><span style="color:#D73A49">NOT NULL</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#032F62"> 'free'</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    created_at </span><span style="color:#D73A49">TIMESTAMP WITH TIME ZONE</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#D73A49"> now</span><span style="color:#24292E">() </span><span style="color:#D73A49">NOT NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    updated_at </span><span style="color:#D73A49">TIMESTAMP WITH TIME ZONE</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#D73A49"> now</span><span style="color:#24292E">() </span><span style="color:#D73A49">NOT NULL</span></span>
+<span class="line"><span style="color:#24292E">);</span></span>
+<span class="line"><span style="color:#D73A49">CREATE</span><span style="color:#D73A49"> INDEX</span><span style="color:#6F42C1"> idx_users_email</span><span style="color:#D73A49"> ON</span><span style="color:#24292E"> users(email);</span></span>
+<span class="line"></span></code></pre>
+<h3>3.2 Table: contacts</h3>
+<p>Stores procurement managers and energy facility clients.</p>
+<pre class="shiki github-light" style="background-color:#fff;color:#24292e" tabindex="0"><code><span class="line"><span style="color:#D73A49">CREATE</span><span style="color:#D73A49"> TABLE</span><span style="color:#6F42C1"> contacts</span><span style="color:#24292E"> (</span></span>
+<span class="line"><span style="color:#24292E">    id UUID </span><span style="color:#D73A49">PRIMARY KEY</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#24292E"> gen_random_uuid(),</span></span>
+<span class="line"><span style="color:#24292E">    user_id UUID </span><span style="color:#D73A49">NOT NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#D73A49">    name</span><span style="color:#D73A49"> VARCHAR</span><span style="color:#24292E">(</span><span style="color:#005CC5">255</span><span style="color:#24292E">) </span><span style="color:#D73A49">NOT NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    email </span><span style="color:#D73A49">VARCHAR</span><span style="color:#24292E">(</span><span style="color:#005CC5">255</span><span style="color:#24292E">) </span><span style="color:#D73A49">NOT NULL</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#032F62"> ''</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    phone </span><span style="color:#D73A49">VARCHAR</span><span style="color:#24292E">(</span><span style="color:#005CC5">50</span><span style="color:#24292E">) </span><span style="color:#D73A49">NOT NULL</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#032F62"> ''</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    company </span><span style="color:#D73A49">VARCHAR</span><span style="color:#24292E">(</span><span style="color:#005CC5">255</span><span style="color:#24292E">) </span><span style="color:#D73A49">NOT NULL</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#032F62"> ''</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    tags </span><span style="color:#D73A49">JSON</span><span style="color:#D73A49"> NOT NULL</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#032F62"> '[]'</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    lead_score </span><span style="color:#D73A49">INTEGER</span><span style="color:#D73A49"> NOT NULL</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#005CC5"> 0</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    notes </span><span style="color:#D73A49">TEXT</span><span style="color:#D73A49"> NOT NULL</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#032F62"> ''</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    source </span><span style="color:#D73A49">VARCHAR</span><span style="color:#24292E">(</span><span style="color:#005CC5">30</span><span style="color:#24292E">) </span><span style="color:#D73A49">NOT NULL</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#032F62"> 'manual'</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    ai_session_id UUID </span><span style="color:#D73A49">NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    created_at </span><span style="color:#D73A49">TIMESTAMP WITH TIME ZONE</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#D73A49"> now</span><span style="color:#24292E">() </span><span style="color:#D73A49">NOT NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    updated_at </span><span style="color:#D73A49">TIMESTAMP WITH TIME ZONE</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#D73A49"> now</span><span style="color:#24292E">() </span><span style="color:#D73A49">NOT NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#D73A49">    CONSTRAINT</span><span style="color:#24292E"> fk_user </span><span style="color:#D73A49">FOREIGN KEY</span><span style="color:#24292E"> (user_id) </span><span style="color:#D73A49">REFERENCES</span><span style="color:#24292E"> users(id) </span><span style="color:#D73A49">ON DELETE CASCADE</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#D73A49">    CONSTRAINT</span><span style="color:#24292E"> fk_ai_sess </span><span style="color:#D73A49">FOREIGN KEY</span><span style="color:#24292E"> (ai_session_id) </span><span style="color:#D73A49">REFERENCES</span><span style="color:#24292E"> chat_sessions(id) </span><span style="color:#D73A49">ON DELETE</span><span style="color:#D73A49"> SET</span><span style="color:#D73A49"> NULL</span></span>
+<span class="line"><span style="color:#24292E">);</span></span>
+<span class="line"><span style="color:#D73A49">CREATE</span><span style="color:#D73A49"> INDEX</span><span style="color:#6F42C1"> idx_contacts_user_id</span><span style="color:#D73A49"> ON</span><span style="color:#24292E"> contacts(user_id);</span></span>
+<span class="line"></span></code></pre>
+<h3>3.3 Table: deals</h3>
+<p>Represents pending or completed renewable energy contracts.</p>
+<pre class="shiki github-light" style="background-color:#fff;color:#24292e" tabindex="0"><code><span class="line"><span style="color:#D73A49">CREATE</span><span style="color:#D73A49"> TABLE</span><span style="color:#6F42C1"> deals</span><span style="color:#24292E"> (</span></span>
+<span class="line"><span style="color:#24292E">    id UUID </span><span style="color:#D73A49">PRIMARY KEY</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#24292E"> gen_random_uuid(),</span></span>
+<span class="line"><span style="color:#24292E">    user_id UUID </span><span style="color:#D73A49">NOT NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    contact_id UUID </span><span style="color:#D73A49">NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    title </span><span style="color:#D73A49">VARCHAR</span><span style="color:#24292E">(</span><span style="color:#005CC5">255</span><span style="color:#24292E">) </span><span style="color:#D73A49">NOT NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#D73A49">    value</span><span style="color:#D73A49"> NUMERIC</span><span style="color:#24292E">(</span><span style="color:#005CC5">12</span><span style="color:#24292E">, </span><span style="color:#005CC5">2</span><span style="color:#24292E">) </span><span style="color:#D73A49">NOT NULL</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#005CC5"> 0</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    stage </span><span style="color:#D73A49">VARCHAR</span><span style="color:#24292E">(</span><span style="color:#005CC5">30</span><span style="color:#24292E">) </span><span style="color:#D73A49">NOT NULL</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#032F62"> 'lead'</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#D73A49">    status</span><span style="color:#D73A49"> VARCHAR</span><span style="color:#24292E">(</span><span style="color:#005CC5">20</span><span style="color:#24292E">) </span><span style="color:#D73A49">NOT NULL</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#032F62"> 'active'</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    expected_close </span><span style="color:#D73A49">DATE</span><span style="color:#D73A49"> NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    notes </span><span style="color:#D73A49">TEXT</span><span style="color:#D73A49"> NOT NULL</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#032F62"> ''</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    source </span><span style="color:#D73A49">VARCHAR</span><span style="color:#24292E">(</span><span style="color:#005CC5">30</span><span style="color:#24292E">) </span><span style="color:#D73A49">NOT NULL</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#032F62"> 'manual'</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    ai_session_id UUID </span><span style="color:#D73A49">NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    created_at </span><span style="color:#D73A49">TIMESTAMP WITH TIME ZONE</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#D73A49"> now</span><span style="color:#24292E">() </span><span style="color:#D73A49">NOT NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    updated_at </span><span style="color:#D73A49">TIMESTAMP WITH TIME ZONE</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#D73A49"> now</span><span style="color:#24292E">() </span><span style="color:#D73A49">NOT NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#D73A49">    CONSTRAINT</span><span style="color:#24292E"> fk_deal_user </span><span style="color:#D73A49">FOREIGN KEY</span><span style="color:#24292E"> (user_id) </span><span style="color:#D73A49">REFERENCES</span><span style="color:#24292E"> users(id) </span><span style="color:#D73A49">ON DELETE CASCADE</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#D73A49">    CONSTRAINT</span><span style="color:#24292E"> fk_deal_contact </span><span style="color:#D73A49">FOREIGN KEY</span><span style="color:#24292E"> (contact_id) </span><span style="color:#D73A49">REFERENCES</span><span style="color:#24292E"> contacts(id) </span><span style="color:#D73A49">ON DELETE</span><span style="color:#D73A49"> SET</span><span style="color:#D73A49"> NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#D73A49">    CONSTRAINT</span><span style="color:#24292E"> fk_deal_ai </span><span style="color:#D73A49">FOREIGN KEY</span><span style="color:#24292E"> (ai_session_id) </span><span style="color:#D73A49">REFERENCES</span><span style="color:#24292E"> chat_sessions(id) </span><span style="color:#D73A49">ON DELETE</span><span style="color:#D73A49"> SET</span><span style="color:#D73A49"> NULL</span></span>
+<span class="line"><span style="color:#24292E">);</span></span>
+<span class="line"></span></code></pre>
+<h3>3.4 Table: activities</h3>
+<p>Logs chronological interactions (e.g., site appraisals, quote emails).</p>
+<pre class="shiki github-light" style="background-color:#fff;color:#24292e" tabindex="0"><code><span class="line"><span style="color:#D73A49">CREATE</span><span style="color:#D73A49"> TABLE</span><span style="color:#6F42C1"> activities</span><span style="color:#24292E"> (</span></span>
+<span class="line"><span style="color:#24292E">    id UUID </span><span style="color:#D73A49">PRIMARY KEY</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#24292E"> gen_random_uuid(),</span></span>
+<span class="line"><span style="color:#24292E">    user_id UUID </span><span style="color:#D73A49">NOT NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    contact_id UUID </span><span style="color:#D73A49">NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    deal_id UUID </span><span style="color:#D73A49">NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#D73A49">    type</span><span style="color:#D73A49"> VARCHAR</span><span style="color:#24292E">(</span><span style="color:#005CC5">20</span><span style="color:#24292E">) </span><span style="color:#D73A49">NOT NULL</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#032F62"> 'note'</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#D73A49">    description</span><span style="color:#D73A49"> TEXT</span><span style="color:#D73A49"> NOT NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    occurred_at </span><span style="color:#D73A49">TIMESTAMP WITH TIME ZONE</span><span style="color:#D73A49"> NOT NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    created_at </span><span style="color:#D73A49">TIMESTAMP WITH TIME ZONE</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#D73A49"> now</span><span style="color:#24292E">() </span><span style="color:#D73A49">NOT NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#D73A49">    CONSTRAINT</span><span style="color:#24292E"> fk_act_user </span><span style="color:#D73A49">FOREIGN KEY</span><span style="color:#24292E"> (user_id) </span><span style="color:#D73A49">REFERENCES</span><span style="color:#24292E"> users(id) </span><span style="color:#D73A49">ON DELETE CASCADE</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#D73A49">    CONSTRAINT</span><span style="color:#24292E"> fk_act_contact </span><span style="color:#D73A49">FOREIGN KEY</span><span style="color:#24292E"> (contact_id) </span><span style="color:#D73A49">REFERENCES</span><span style="color:#24292E"> contacts(id) </span><span style="color:#D73A49">ON DELETE CASCADE</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#D73A49">    CONSTRAINT</span><span style="color:#24292E"> fk_act_deal </span><span style="color:#D73A49">FOREIGN KEY</span><span style="color:#24292E"> (deal_id) </span><span style="color:#D73A49">REFERENCES</span><span style="color:#24292E"> deals(id) </span><span style="color:#D73A49">ON DELETE</span><span style="color:#D73A49"> SET</span><span style="color:#D73A49"> NULL</span></span>
+<span class="line"><span style="color:#24292E">);</span></span>
+<span class="line"></span></code></pre>
+<h3>3.5 Table: pipeline_stages</h3>
+<p>Maps the specific pipeline layout required for the sales workflow.</p>
+<pre class="shiki github-light" style="background-color:#fff;color:#24292e" tabindex="0"><code><span class="line"><span style="color:#D73A49">CREATE</span><span style="color:#D73A49"> TABLE</span><span style="color:#6F42C1"> pipeline_stages</span><span style="color:#24292E"> (</span></span>
+<span class="line"><span style="color:#24292E">    id UUID </span><span style="color:#D73A49">PRIMARY KEY</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#24292E"> gen_random_uuid(),</span></span>
+<span class="line"><span style="color:#24292E">    user_id UUID </span><span style="color:#D73A49">NOT NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#D73A49">    name</span><span style="color:#D73A49"> VARCHAR</span><span style="color:#24292E">(</span><span style="color:#005CC5">100</span><span style="color:#24292E">) </span><span style="color:#D73A49">NOT NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    position </span><span style="color:#D73A49">INTEGER</span><span style="color:#D73A49"> NOT NULL</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#005CC5"> 0</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    created_at </span><span style="color:#D73A49">TIMESTAMP WITH TIME ZONE</span><span style="color:#D73A49"> DEFAULT</span><span style="color:#D73A49"> now</span><span style="color:#24292E">() </span><span style="color:#D73A49">NOT NULL</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#D73A49">    CONSTRAINT</span><span style="color:#24292E"> fk_pipe_user </span><span style="color:#D73A49">FOREIGN KEY</span><span style="color:#24292E"> (user_id) </span><span style="color:#D73A49">REFERENCES</span><span style="color:#24292E"> users(id) </span><span style="color:#D73A49">ON DELETE CASCADE</span></span>
+<span class="line"><span style="color:#24292E">);</span></span>
+<span class="line"></span></code></pre>
+<hr>
+<h2>4. Normalization</h2>
+<p>Normalization is an essential design technique to decrease data redundancy, ensure high integrity, and eliminate Insert, Update, and Delete anomalies. Our schema rigorously applies these principles.</p>
+<h3>4.1 First Normal Form (1NF)</h3>
+<p><strong>Rule:</strong> Each table cell should contain a single, atomic value. No repeating groups.</p>
+<ul>
+<li><em>Before 1NF application:</em> A user might store multiple tags as comma-separated strings inside a text field. Activities for a deal might just be a bloated appending text block in the <code>deals.notes</code> column.</li>
+<li><em>After 1NF application:</em> The <code>activities</code> are split into a completely separate table where each individual interaction (meeting, call) is its own row with an atomic <code>occurred_at</code> timestamp.</li>
+<li><em>Exception noting:</em> The <code>tags</code> array on the <code>contacts</code> table utilizes a PostgreSQL native <code>JSON</code>/<code>JSONB</code> array type. While historically this breaches strict relational atomic 1NF logic, modern RDBMS standardizes JSON structures as atomic data types that can be natively queried at high speed via index architectures like GIN/GiST.</li>
+</ul>
+<h3>4.2 Second Normal Form (2NF)</h3>
+<p><strong>Rule:</strong> Must be in 1NF. All non-key attributes must rely completely on the entire primary key (no partial dependency).</p>
+<ul>
+<li>Since all our tables utilize a surrogate universally unique identifier (UUID) as a single column Primary Key (<code>id</code>), all attributes invariably depend entirely on that singular PK. By definition, any relation with a single-attribute primary key that is in 1NF is inherently in 2NF.</li>
+</ul>
+<h3>4.3 Third Normal Form (3NF)</h3>
+<p><strong>Rule:</strong> Must be in 2NF. All non-key attributes should not depend on any other non-key attributes (no transitive dependency).</p>
+<ul>
+<li><em>Scenario Evaluation:</em> If the <code>deals</code> table contained <code>contact_name</code> and <code>contact_company</code> directly inside it, it would violate 3NF because <code>contact_company</code> would transitively depend on <code>contact_id</code>, not the <code>deal_id</code>.</li>
+<li><em>Correction in our Schema:</em> The system stores only <code>contact_id</code> as a foreign key within the <code>deals</code> table. If the application needs to know the company of the contact associated with a Solar Installation Deal, it performs a relational <code>JOIN</code> on the <code>contacts</code> table instead of storing duplicated proxy data.</li>
+</ul>
+<h3>4.4 Avoidance of Anomalies Summary</h3>
+<ul>
+<li><strong>Update Anomaly:</strong> If a Corporate Energy Client changes their company name, we only update it once in the <code>contacts</code> table. All associated dozens of past deals inherently refer back correctly.</li>
+<li><strong>Delete Anomaly:</strong> Using <code>ON DELETE CASCADE</code> and <code>ON DELETE SET NULL</code>. If a User account is purged, their isolated pipeline stages and deals automatically cascade to deletion, preventing orphaned garbage data. If a contact is deleted, the deals are retained but the <code>contact_id</code> is smartly <code>SET NULL</code>.</li>
+</ul>
+<hr>
+<h2>5. Modules of the Application</h2>
+<p>The system adopts a modular architectural pattern aligning with Domain-Driven Design concepts.</p>
+<h3>5.1 Auth and User Module</h3>
+<p>This module is responsible for authenticating sales representatives securely utilizing JWT (JSON Web Tokens) and bcrypt password hashing. It issues access tokens that encapsulate the user context required by all other endpoints. It handles registration, login validation, and profile management for the energy traders/reps.</p>
+<h3>5.2 Contact Management Module</h3>
+<p>Allows for comprehensive CRUD (Create, Read, Update, Delete) operations on client networks. Contains sophisticated filtering methods. Includes the tracking of the <code>lead_score</code>, which is calculated via Machine Learning algorithms judging the likelihood of the client converting to a lucrative contract.</p>
+<h3>5.3 Deal and Pipeline Module</h3>
+<p>The epicenter of the Energy CRM. Handles the financial prospects of the firm. It tracks the magnitude (<code>value</code>) of the power installation and its progression across the workflow (Lead → Qualified → Site Appraisal → Negotiation → Closed). Includes endpoints that modify state variables and execute timeline recalculations.</p>
+<h3>5.4 AI Agent &#x26; Chat Module</h3>
+<p>An advanced module designed to act as an asynchronous assistant for the sales rep. Built on top of <code>ChatSession</code>, <code>ChatMessage</code>, and <code>ChatAction</code> tables. The salesperson can text "I just met with John Doe from SolarTech, add him as a lead", and the LLM module digests the context, interfaces with the Database, creates the contact, links the session using the <code>ai_session_id</code>, and replies affirmatively.</p>
+<h3>5.5 Analytics &#x26; Forecasting Module</h3>
+<p>Executes heavy SQL aggregations to calculate core business metrics. Outputs total pipeline value, computes win rates grouping by stages, and provides a probabilistically weighted forecast (a $1,000,000 wind farm deal in "Qualified" stage might weigh 25%, outputting $250,000 expected forecast).</p>
+<hr>
+<h2>6. Database Connectivity (SQLAlchemy Async ORM)</h2>
+<p>While standard Java applications use JDBC for database connections, this modern Python ecosystem leverages <strong>SQLAlchemy</strong>, a powerful SQL toolkit and Object-Relational Mapper (ORM), via the high-performance asynchronous <code>asyncpg</code> driver.</p>
+<h3>6.1 Connection Flow Execution</h3>
+<ol>
+<li><strong>Engine Instantiation:</strong> The application reads the <code>.env</code> target and calls <code>create_async_engine(DATABASE_URL)</code>. This compiles the connection pool rules and loads the Postgres async driver.</li>
+<li><strong>Session Factory Preparation:</strong> <code>async_sessionmaker</code> builds a context factory that governs atomic transactions. Setting <code>expire_on_commit=False</code> ensures objects remain resident in application memory after a transaction is closed.</li>
+<li><strong>Dependency Injection:</strong> At runtime, the FastAPI web framework invokes the <code>get_db</code> generator dependency. This executes <code>async with async_session() as session: yield session</code>.</li>
+<li><strong>Execution:</strong> The router executes statements, yielding control back to the event loop, effectively preventing threads from blocking while waiting for network I/O to the DBMS engine.</li>
+</ol>
+<h3>6.2 Connection String Profile</h3>
+<p>Format: <code>postgresql+asyncpg://{USER}:{PASSWORD}@{HOST}:{PORT}/{DB_NAME}</code>
+Example: <code>postgresql+asyncpg://postgres:securepass!@localhost:5432/livo_crm</code></p>
+<p>Sample connection module (<code>database.py</code>):</p>
+<pre class="shiki github-light" style="background-color:#fff;color:#24292e" tabindex="0"><code><span class="line"><span style="color:#D73A49">from</span><span style="color:#24292E"> sqlalchemy.ext.asyncio </span><span style="color:#D73A49">import</span><span style="color:#24292E"> AsyncSession, async_sessionmaker, create_async_engine</span></span>
+<span class="line"><span style="color:#D73A49">from</span><span style="color:#24292E"> sqlalchemy.orm </span><span style="color:#D73A49">import</span><span style="color:#24292E"> DeclarativeBase</span></span>
+<span class="line"><span style="color:#D73A49">from</span><span style="color:#24292E"> app.config </span><span style="color:#D73A49">import</span><span style="color:#24292E"> settings</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D"># Initializes the high-performance async driver connected to PostgreSQL</span></span>
+<span class="line"><span style="color:#24292E">engine </span><span style="color:#D73A49">=</span><span style="color:#24292E"> create_async_engine(settings.</span><span style="color:#005CC5">DATABASE_URL</span><span style="color:#24292E">, </span><span style="color:#E36209">echo</span><span style="color:#D73A49">=</span><span style="color:#005CC5">False</span><span style="color:#24292E">, </span><span style="color:#E36209">future</span><span style="color:#D73A49">=</span><span style="color:#005CC5">True</span><span style="color:#24292E">)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D"># Factory ensuring database session bounds and lifecycle management</span></span>
+<span class="line"><span style="color:#24292E">async_session </span><span style="color:#D73A49">=</span><span style="color:#24292E"> async_sessionmaker(engine, </span><span style="color:#E36209">class_</span><span style="color:#D73A49">=</span><span style="color:#24292E">AsyncSession, </span><span style="color:#E36209">expire_on_commit</span><span style="color:#D73A49">=</span><span style="color:#005CC5">False</span><span style="color:#24292E">)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49">class</span><span style="color:#6F42C1"> Base</span><span style="color:#24292E">(</span><span style="color:#6F42C1">DeclarativeBase</span><span style="color:#24292E">):</span></span>
+<span class="line"><span style="color:#032F62">    """Shared declarative base mapping Python Classes exactly to SQL Tables."""</span></span>
+<span class="line"><span style="color:#D73A49">    pass</span></span>
+<span class="line"></span></code></pre>
+<hr>
+<h2>7. Screenshots and Output Simulation</h2>
+<p>As this is a backend-heavy data system description, the interactive outputs are logically simulated via expected front-end rendering scenarios and JSON APIs.</p>
+<h3>7.1 Dashboard Overview (Analytics Mock)</h3>
+<p><strong>UI Layout Description:</strong></p>
+<ul>
+<li>Top row consists of 4 large metric cards: <em>"Total Contacts: 1,420"</em>, <em>"Active Deals: 45"</em>, <em>"Pipeline Value: $14.5M"</em>, <em>"Expected Forecast: $4.2M"</em>.</li>
+<li>A large categorical bar chart showing "Win/Loss Funnel" plotting <code>Closed Won</code> vs <code>Negotiation</code> stages.</li>
+<li>A feed on the right mapping <code>Recent Activities</code>.</li>
+</ul>
+<p><strong>Simulated Application API JSON Fetch:</strong></p>
+<pre class="shiki github-light" style="background-color:#fff;color:#24292e" tabindex="0"><code><span class="line"><span style="color:#24292E">{</span></span>
+<span class="line"><span style="color:#005CC5">  "contacts"</span><span style="color:#24292E">: </span><span style="color:#005CC5">1420</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#005CC5">  "deals"</span><span style="color:#24292E">: </span><span style="color:#005CC5">45</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#005CC5">  "activities"</span><span style="color:#24292E">: </span><span style="color:#005CC5">312</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#005CC5">  "pipeline_value"</span><span style="color:#24292E">: </span><span style="color:#005CC5">14500000.0</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#005CC5">  "won_value"</span><span style="color:#24292E">: </span><span style="color:#005CC5">8500000.0</span></span>
+<span class="line"><span style="color:#24292E">}</span></span>
+<span class="line"></span></code></pre>
+<h3>7.2 Deal Pipeline Kanban Board</h3>
+<p><strong>UI Layout Description:</strong></p>
+<ul>
+<li>A wide Kanban board divided into vertical columns representing <code>PipelineStage</code> entities (e.g., <em>Lead</em>, <em>Proposal</em>, <em>Negotiation</em>).</li>
+<li>Interactive drag-and-drop cards mapping to the <code>deals</code> table.</li>
+<li>Card details simulate showing:
+<blockquote>
+<p><strong>Project Alpha Solar Array</strong>
+Contact: Sarah Jenkins (NextGen Energies)
+Value: $650,000 | Close: Oct 20th</p>
+</blockquote>
+</li>
+</ul>
+<h3>7.3 AI CRM Chat Console</h3>
+<p><strong>UI Layout Description:</strong></p>
+<ul>
+<li>Right-sided floating modal with chat bubbles.</li>
+<li><strong>User:</strong> "Prepare a summary of all my solar deals currently in negotiation."</li>
+<li><strong>Assistant:</strong> "You have 3 deals in negotiation spanning $2.1M. One with EcoCorps and two with GridVital." -> The system autonomously fires <code>SELECT</code> SQL statements behind the scenes to fetch this.</li>
+</ul>
+<hr>
+<h2>8. Sample Code</h2>
+<p>The following extracts represent heavily integrated components of the MVC application, detailing asynchronous data querying, ORM implementations, AI Machine Learning models, and business logic routing.</p>
+<h3>8.1 API Entry Point and Router Management (<code>main.py</code>)</h3>
+<p>This section maps the API endpoints to the web server space, defining the overarching CRM interface footprint.</p>
+<pre class="shiki github-light" style="background-color:#fff;color:#24292e" tabindex="0"><code><span class="line"><span style="color:#032F62">"""LivoCRM — FastAPI entry point."""</span></span>
+<span class="line"><span style="color:#D73A49">from</span><span style="color:#24292E"> contextlib </span><span style="color:#D73A49">import</span><span style="color:#24292E"> asynccontextmanager</span></span>
+<span class="line"><span style="color:#D73A49">from</span><span style="color:#24292E"> fastapi </span><span style="color:#D73A49">import</span><span style="color:#24292E"> FastAPI</span></span>
+<span class="line"><span style="color:#D73A49">from</span><span style="color:#24292E"> fastapi.middleware.cors </span><span style="color:#D73A49">import</span><span style="color:#24292E"> CORSMiddleware</span></span>
+<span class="line"><span style="color:#D73A49">from</span><span style="color:#24292E"> app.routers </span><span style="color:#D73A49">import</span><span style="color:#24292E"> (</span></span>
+<span class="line"><span style="color:#24292E">    auth_router, contacts_router, deals_router,</span></span>
+<span class="line"><span style="color:#24292E">    activities_router, analytics_router, ai_router,</span></span>
+<span class="line"><span style="color:#24292E">    chat_router, ws_router</span></span>
+<span class="line"><span style="color:#24292E">)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6F42C1">@asynccontextmanager</span></span>
+<span class="line"><span style="color:#D73A49">async</span><span style="color:#D73A49"> def</span><span style="color:#6F42C1"> lifespan</span><span style="color:#24292E">(app: FastAPI):</span></span>
+<span class="line"><span style="color:#6A737D">    # Bind models directly to SQLAlchemy Declarative Meta prior to server start</span></span>
+<span class="line"><span style="color:#D73A49">    import</span><span style="color:#24292E"> app.models  </span><span style="color:#6A737D"># noqa: F401</span></span>
+<span class="line"><span style="color:#D73A49">    yield</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E">app </span><span style="color:#D73A49">=</span><span style="color:#24292E"> FastAPI(</span></span>
+<span class="line"><span style="color:#E36209">    title</span><span style="color:#D73A49">=</span><span style="color:#032F62">"LivoCRM Energy API Backend"</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#E36209">    version</span><span style="color:#D73A49">=</span><span style="color:#032F62">"1.0.0"</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#E36209">    lifespan</span><span style="color:#D73A49">=</span><span style="color:#24292E">lifespan,</span></span>
+<span class="line"><span style="color:#24292E">)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D"># Standard Security and CORS integrations</span></span>
+<span class="line"><span style="color:#24292E">app.add_middleware(</span></span>
+<span class="line"><span style="color:#24292E">    CORSMiddleware,</span></span>
+<span class="line"><span style="color:#E36209">    allow_origins</span><span style="color:#D73A49">=</span><span style="color:#24292E">[</span><span style="color:#032F62">"*"</span><span style="color:#24292E">],</span></span>
+<span class="line"><span style="color:#E36209">    allow_credentials</span><span style="color:#D73A49">=</span><span style="color:#005CC5">True</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#E36209">    allow_methods</span><span style="color:#D73A49">=</span><span style="color:#24292E">[</span><span style="color:#032F62">"*"</span><span style="color:#24292E">],</span></span>
+<span class="line"><span style="color:#E36209">    allow_headers</span><span style="color:#D73A49">=</span><span style="color:#24292E">[</span><span style="color:#032F62">"*"</span><span style="color:#24292E">],</span></span>
+<span class="line"><span style="color:#24292E">)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#005CC5">API</span><span style="color:#D73A49"> =</span><span style="color:#032F62"> "/api"</span></span>
+<span class="line"><span style="color:#24292E">app.include_router(analytics_router, </span><span style="color:#E36209">prefix</span><span style="color:#D73A49">=</span><span style="color:#005CC5">API</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#24292E">app.include_router(contacts_router, </span><span style="color:#E36209">prefix</span><span style="color:#D73A49">=</span><span style="color:#005CC5">API</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#24292E">app.include_router(deals_router, </span><span style="color:#E36209">prefix</span><span style="color:#D73A49">=</span><span style="color:#005CC5">API</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#24292E">app.include_router(ws_router)  </span><span style="color:#6A737D"># Handles Live WebSocket push alerts</span></span>
+<span class="line"></span></code></pre>
+<h3>8.2 Database ORM Models Implementation</h3>
+<p>The pythonic representation of the Entity-Relationship structures using typed mappings.</p>
+<pre class="shiki github-light" style="background-color:#fff;color:#24292e" tabindex="0"><code><span class="line"><span style="color:#032F62">"""Contact Model definition linked to the users table."""</span></span>
+<span class="line"><span style="color:#D73A49">import</span><span style="color:#24292E"> uuid</span></span>
+<span class="line"><span style="color:#D73A49">from</span><span style="color:#24292E"> datetime </span><span style="color:#D73A49">import</span><span style="color:#24292E"> datetime</span></span>
+<span class="line"><span style="color:#D73A49">from</span><span style="color:#24292E"> sqlalchemy </span><span style="color:#D73A49">import</span><span style="color:#24292E"> DateTime, ForeignKey, Integer, </span><span style="color:#005CC5">JSON</span><span style="color:#24292E">, String, Text, text</span></span>
+<span class="line"><span style="color:#D73A49">from</span><span style="color:#24292E"> sqlalchemy.dialects.postgresql </span><span style="color:#D73A49">import</span><span style="color:#005CC5"> UUID</span></span>
+<span class="line"><span style="color:#D73A49">from</span><span style="color:#24292E"> sqlalchemy.orm </span><span style="color:#D73A49">import</span><span style="color:#24292E"> Mapped, mapped_column, relationship</span></span>
+<span class="line"><span style="color:#D73A49">from</span><span style="color:#24292E"> app.database </span><span style="color:#D73A49">import</span><span style="color:#24292E"> Base</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49">class</span><span style="color:#6F42C1"> Contact</span><span style="color:#24292E">(</span><span style="color:#6F42C1">Base</span><span style="color:#24292E">):</span></span>
+<span class="line"><span style="color:#24292E">    __tablename__ </span><span style="color:#D73A49">=</span><span style="color:#032F62"> "contacts"</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#005CC5">    id</span><span style="color:#24292E">: Mapped[uuid.</span><span style="color:#005CC5">UUID</span><span style="color:#24292E">] </span><span style="color:#D73A49">=</span><span style="color:#24292E"> mapped_column(</span></span>
+<span class="line"><span style="color:#24292E">        UUID(</span><span style="color:#E36209">as_uuid</span><span style="color:#D73A49">=</span><span style="color:#005CC5">True</span><span style="color:#24292E">), </span><span style="color:#E36209">primary_key</span><span style="color:#D73A49">=</span><span style="color:#005CC5">True</span><span style="color:#24292E">, </span><span style="color:#E36209">server_default</span><span style="color:#D73A49">=</span><span style="color:#24292E">text(</span><span style="color:#032F62">"gen_random_uuid()"</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#24292E">    )</span></span>
+<span class="line"><span style="color:#24292E">    user_id: Mapped[uuid.</span><span style="color:#005CC5">UUID</span><span style="color:#24292E">] </span><span style="color:#D73A49">=</span><span style="color:#24292E"> mapped_column(</span></span>
+<span class="line"><span style="color:#24292E">        UUID(</span><span style="color:#E36209">as_uuid</span><span style="color:#D73A49">=</span><span style="color:#005CC5">True</span><span style="color:#24292E">), ForeignKey(</span><span style="color:#032F62">"users.id"</span><span style="color:#24292E">, </span><span style="color:#E36209">ondelete</span><span style="color:#D73A49">=</span><span style="color:#032F62">"CASCADE"</span><span style="color:#24292E">), </span><span style="color:#E36209">nullable</span><span style="color:#D73A49">=</span><span style="color:#005CC5">False</span><span style="color:#24292E">, </span><span style="color:#E36209">index</span><span style="color:#D73A49">=</span><span style="color:#005CC5">True</span></span>
+<span class="line"><span style="color:#24292E">    )</span></span>
+<span class="line"><span style="color:#24292E">    name: Mapped[</span><span style="color:#005CC5">str</span><span style="color:#24292E">] </span><span style="color:#D73A49">=</span><span style="color:#24292E"> mapped_column(String(</span><span style="color:#005CC5">255</span><span style="color:#24292E">), </span><span style="color:#E36209">nullable</span><span style="color:#D73A49">=</span><span style="color:#005CC5">False</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#24292E">    email: Mapped[</span><span style="color:#005CC5">str</span><span style="color:#24292E">] </span><span style="color:#D73A49">=</span><span style="color:#24292E"> mapped_column(String(</span><span style="color:#005CC5">255</span><span style="color:#24292E">), </span><span style="color:#E36209">nullable</span><span style="color:#D73A49">=</span><span style="color:#005CC5">False</span><span style="color:#24292E">, </span><span style="color:#E36209">default</span><span style="color:#D73A49">=</span><span style="color:#032F62">""</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#24292E">    company: Mapped[</span><span style="color:#005CC5">str</span><span style="color:#24292E">] </span><span style="color:#D73A49">=</span><span style="color:#24292E"> mapped_column(String(</span><span style="color:#005CC5">255</span><span style="color:#24292E">), </span><span style="color:#E36209">nullable</span><span style="color:#D73A49">=</span><span style="color:#005CC5">False</span><span style="color:#24292E">, </span><span style="color:#E36209">default</span><span style="color:#D73A49">=</span><span style="color:#032F62">""</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#24292E">    </span></span>
+<span class="line"><span style="color:#6A737D">    # Store dynamic tag arrays using Postgres highly efficient JSON columns</span></span>
+<span class="line"><span style="color:#24292E">    tags: Mapped[</span><span style="color:#005CC5">list</span><span style="color:#24292E">] </span><span style="color:#D73A49">=</span><span style="color:#24292E"> mapped_column(</span><span style="color:#005CC5">JSON</span><span style="color:#24292E">, </span><span style="color:#E36209">nullable</span><span style="color:#D73A49">=</span><span style="color:#005CC5">False</span><span style="color:#24292E">, </span><span style="color:#E36209">server_default</span><span style="color:#D73A49">=</span><span style="color:#032F62">"[]"</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#24292E">    lead_score: Mapped[</span><span style="color:#005CC5">int</span><span style="color:#24292E">] </span><span style="color:#D73A49">=</span><span style="color:#24292E"> mapped_column(Integer, </span><span style="color:#E36209">nullable</span><span style="color:#D73A49">=</span><span style="color:#005CC5">False</span><span style="color:#24292E">, </span><span style="color:#E36209">server_default</span><span style="color:#D73A49">=</span><span style="color:#032F62">"0"</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#24292E">    </span></span>
+<span class="line"><span style="color:#6A737D">    # AI provenance tracking foreign keys</span></span>
+<span class="line"><span style="color:#24292E">    ai_session_id: Mapped[uuid.</span><span style="color:#005CC5">UUID</span><span style="color:#D73A49"> |</span><span style="color:#005CC5"> None</span><span style="color:#24292E">] </span><span style="color:#D73A49">=</span><span style="color:#24292E"> mapped_column(</span></span>
+<span class="line"><span style="color:#24292E">        UUID(</span><span style="color:#E36209">as_uuid</span><span style="color:#D73A49">=</span><span style="color:#005CC5">True</span><span style="color:#24292E">),</span></span>
+<span class="line"><span style="color:#24292E">        ForeignKey(</span><span style="color:#032F62">"chat_sessions.id"</span><span style="color:#24292E">, </span><span style="color:#E36209">ondelete</span><span style="color:#D73A49">=</span><span style="color:#032F62">"SET NULL"</span><span style="color:#24292E">),</span></span>
+<span class="line"><span style="color:#E36209">        nullable</span><span style="color:#D73A49">=</span><span style="color:#005CC5">True</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#E36209">        index</span><span style="color:#D73A49">=</span><span style="color:#005CC5">True</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    )</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E">    created_at: Mapped[datetime] </span><span style="color:#D73A49">=</span><span style="color:#24292E"> mapped_column(</span></span>
+<span class="line"><span style="color:#24292E">        DateTime(</span><span style="color:#E36209">timezone</span><span style="color:#D73A49">=</span><span style="color:#005CC5">True</span><span style="color:#24292E">), </span><span style="color:#E36209">server_default</span><span style="color:#D73A49">=</span><span style="color:#24292E">text(</span><span style="color:#032F62">"now()"</span><span style="color:#24292E">), </span><span style="color:#E36209">nullable</span><span style="color:#D73A49">=</span><span style="color:#005CC5">False</span></span>
+<span class="line"><span style="color:#24292E">    )</span></span>
+<span class="line"><span style="color:#24292E">    </span></span>
+<span class="line"><span style="color:#6A737D">    # Bi-directional relational bindings mapped directly via the ORM engine</span></span>
+<span class="line"><span style="color:#24292E">    user </span><span style="color:#D73A49">=</span><span style="color:#24292E"> relationship(</span><span style="color:#032F62">"User"</span><span style="color:#24292E">, </span><span style="color:#E36209">back_populates</span><span style="color:#D73A49">=</span><span style="color:#032F62">"contacts"</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#24292E">    deals </span><span style="color:#D73A49">=</span><span style="color:#24292E"> relationship(</span><span style="color:#032F62">"Deal"</span><span style="color:#24292E">, </span><span style="color:#E36209">back_populates</span><span style="color:#D73A49">=</span><span style="color:#032F62">"contact"</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#24292E">    activities </span><span style="color:#D73A49">=</span><span style="color:#24292E"> relationship(</span><span style="color:#032F62">"Activity"</span><span style="color:#24292E">, </span><span style="color:#E36209">back_populates</span><span style="color:#D73A49">=</span><span style="color:#032F62">"contact"</span><span style="color:#24292E">)</span></span>
+<span class="line"></span></code></pre>
+<h3>8.3 Advanced SQL Analytical Aggregation (<code>routers/analytics.py</code>)</h3>
+<p>This file highlights deep SQL queries running via the asynchronously engineered session. Notice the use of <code>func.sum</code> and <code>group_by</code>.</p>
+<pre class="shiki github-light" style="background-color:#fff;color:#24292e" tabindex="0"><code><span class="line"><span style="color:#032F62">"""Analytics router — KPI summaries, win-rate funnel, revenue forecast."""</span></span>
+<span class="line"><span style="color:#D73A49">from</span><span style="color:#24292E"> fastapi </span><span style="color:#D73A49">import</span><span style="color:#24292E"> APIRouter, Depends</span></span>
+<span class="line"><span style="color:#D73A49">from</span><span style="color:#24292E"> sqlalchemy </span><span style="color:#D73A49">import</span><span style="color:#24292E"> func, select</span></span>
+<span class="line"><span style="color:#D73A49">from</span><span style="color:#24292E"> sqlalchemy.ext.asyncio </span><span style="color:#D73A49">import</span><span style="color:#24292E"> AsyncSession</span></span>
+<span class="line"><span style="color:#D73A49">from</span><span style="color:#24292E"> app.dependencies </span><span style="color:#D73A49">import</span><span style="color:#24292E"> get_db, get_current_user</span></span>
+<span class="line"><span style="color:#D73A49">from</span><span style="color:#24292E"> app.models.deal </span><span style="color:#D73A49">import</span><span style="color:#24292E"> Deal</span></span>
+<span class="line"><span style="color:#D73A49">from</span><span style="color:#24292E"> app.models.user </span><span style="color:#D73A49">import</span><span style="color:#24292E"> User</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E">router </span><span style="color:#D73A49">=</span><span style="color:#24292E"> APIRouter(</span><span style="color:#E36209">prefix</span><span style="color:#D73A49">=</span><span style="color:#032F62">"/analytics"</span><span style="color:#24292E">, </span><span style="color:#E36209">tags</span><span style="color:#D73A49">=</span><span style="color:#24292E">[</span><span style="color:#032F62">"Analytics"</span><span style="color:#24292E">])</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6F42C1">@router.get</span><span style="color:#24292E">(</span><span style="color:#032F62">"/forecast"</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#D73A49">async</span><span style="color:#D73A49"> def</span><span style="color:#6F42C1"> forecast</span><span style="color:#24292E">(</span></span>
+<span class="line"><span style="color:#24292E">    db: AsyncSession </span><span style="color:#D73A49">=</span><span style="color:#24292E"> Depends(get_db),</span></span>
+<span class="line"><span style="color:#24292E">    user: User </span><span style="color:#D73A49">=</span><span style="color:#24292E"> Depends(get_current_user),</span></span>
+<span class="line"><span style="color:#24292E">):</span></span>
+<span class="line"><span style="color:#032F62">    """</span></span>
+<span class="line"><span style="color:#032F62">    Weighted revenue forecast calculation.</span></span>
+<span class="line"><span style="color:#032F62">    Multiplies literal projected Deal cash values against probability constants</span></span>
+<span class="line"><span style="color:#032F62">    based on the deal's current relational pipeline stage mapping.</span></span>
+<span class="line"><span style="color:#032F62">    """</span></span>
+<span class="line"><span style="color:#24292E">    stage_weights </span><span style="color:#D73A49">=</span><span style="color:#24292E"> {</span></span>
+<span class="line"><span style="color:#032F62">        "lead"</span><span style="color:#24292E">: </span><span style="color:#005CC5">0.1</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#032F62">        "qualified"</span><span style="color:#24292E">: </span><span style="color:#005CC5">0.25</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#032F62">        "proposal"</span><span style="color:#24292E">: </span><span style="color:#005CC5">0.5</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#032F62">        "negotiation"</span><span style="color:#24292E">: </span><span style="color:#005CC5">0.75</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#032F62">        "closed_won"</span><span style="color:#24292E">: </span><span style="color:#005CC5">1.0</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#032F62">        "closed_lost"</span><span style="color:#24292E">: </span><span style="color:#005CC5">0.0</span><span style="color:#24292E">,</span></span>
+<span class="line"><span style="color:#24292E">    }</span></span>
+<span class="line"><span style="color:#24292E">    </span></span>
+<span class="line"><span style="color:#6A737D">    # Build and execute the SELECT (stage, sum(value)) FROM deals WHERE ... GROUP BY stage SQL</span></span>
+<span class="line"><span style="color:#24292E">    result </span><span style="color:#D73A49">=</span><span style="color:#D73A49"> await</span><span style="color:#24292E"> db.execute(</span></span>
+<span class="line"><span style="color:#24292E">        select(Deal.stage, func.sum(Deal.value))</span></span>
+<span class="line"><span style="color:#24292E">        .where(Deal.user_id </span><span style="color:#D73A49">==</span><span style="color:#24292E"> user.id, Deal.status </span><span style="color:#D73A49">==</span><span style="color:#032F62"> "active"</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#24292E">        .group_by(Deal.stage)</span></span>
+<span class="line"><span style="color:#24292E">    )</span></span>
+<span class="line"><span style="color:#24292E">    </span></span>
+<span class="line"><span style="color:#24292E">    breakdown </span><span style="color:#D73A49">=</span><span style="color:#24292E"> {}</span></span>
+<span class="line"><span style="color:#24292E">    weighted_total </span><span style="color:#D73A49">=</span><span style="color:#005CC5"> 0.0</span></span>
+<span class="line"><span style="color:#24292E">    </span></span>
+<span class="line"><span style="color:#D73A49">    for</span><span style="color:#24292E"> stage, total </span><span style="color:#D73A49">in</span><span style="color:#24292E"> result.all():</span></span>
+<span class="line"><span style="color:#24292E">        weight </span><span style="color:#D73A49">=</span><span style="color:#24292E"> stage_weights.get(stage, </span><span style="color:#005CC5">0.1</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#24292E">        weighted </span><span style="color:#D73A49">=</span><span style="color:#005CC5"> float</span><span style="color:#24292E">(total) </span><span style="color:#D73A49">*</span><span style="color:#24292E"> weight</span></span>
+<span class="line"><span style="color:#24292E">        breakdown[stage] </span><span style="color:#D73A49">=</span><span style="color:#24292E"> {</span></span>
+<span class="line"><span style="color:#032F62">            "raw"</span><span style="color:#24292E">: </span><span style="color:#005CC5">float</span><span style="color:#24292E">(total), </span></span>
+<span class="line"><span style="color:#032F62">            "weight"</span><span style="color:#24292E">: weight, </span></span>
+<span class="line"><span style="color:#032F62">            "weighted"</span><span style="color:#24292E">: </span><span style="color:#005CC5">round</span><span style="color:#24292E">(weighted, </span><span style="color:#005CC5">2</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#24292E">        }</span></span>
+<span class="line"><span style="color:#24292E">        weighted_total </span><span style="color:#D73A49">+=</span><span style="color:#24292E"> weighted</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49">    return</span><span style="color:#24292E"> {</span><span style="color:#032F62">"forecast"</span><span style="color:#24292E">: </span><span style="color:#005CC5">round</span><span style="color:#24292E">(weighted_total, </span><span style="color:#005CC5">2</span><span style="color:#24292E">), </span><span style="color:#032F62">"breakdown"</span><span style="color:#24292E">: breakdown}</span></span>
+<span class="line"></span></code></pre>
+<h3>8.4 Support Code: Machine Learning Data Synthesizer (<code>ml/generate_data.py</code>)</h3>
+<p>Showcases the programmatic heuristic mechanism to generate synthetic data for the ML classification network that operates adjacent to the database logic to assign <code>lead_score</code>.</p>
+<pre class="shiki github-light" style="background-color:#fff;color:#24292e" tabindex="0"><code><span class="line"><span style="color:#032F62">"""Generate synthetic CRM data for training the lead-scoring model."""</span></span>
+<span class="line"><span style="color:#D73A49">import</span><span style="color:#24292E"> random</span></span>
+<span class="line"><span style="color:#D73A49">import</span><span style="color:#24292E"> pandas </span><span style="color:#D73A49">as</span><span style="color:#24292E"> pd</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E">random.seed(</span><span style="color:#005CC5">42</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#005CC5">ROWS</span><span style="color:#D73A49"> =</span><span style="color:#005CC5"> 2000</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49">def</span><span style="color:#6F42C1"> generate</span><span style="color:#24292E">():</span></span>
+<span class="line"><span style="color:#24292E">    records </span><span style="color:#D73A49">=</span><span style="color:#24292E"> []</span></span>
+<span class="line"><span style="color:#D73A49">    for</span><span style="color:#24292E"> _ </span><span style="color:#D73A49">in</span><span style="color:#005CC5"> range</span><span style="color:#24292E">(</span><span style="color:#005CC5">ROWS</span><span style="color:#24292E">):</span></span>
+<span class="line"><span style="color:#24292E">        has_company </span><span style="color:#D73A49">=</span><span style="color:#24292E"> random.choice([</span><span style="color:#005CC5">0</span><span style="color:#24292E">, </span><span style="color:#005CC5">1</span><span style="color:#24292E">])</span></span>
+<span class="line"><span style="color:#24292E">        has_phone </span><span style="color:#D73A49">=</span><span style="color:#24292E"> random.choice([</span><span style="color:#005CC5">0</span><span style="color:#24292E">, </span><span style="color:#005CC5">1</span><span style="color:#24292E">])</span></span>
+<span class="line"><span style="color:#24292E">        tag_count </span><span style="color:#D73A49">=</span><span style="color:#24292E"> random.randint(</span><span style="color:#005CC5">0</span><span style="color:#24292E">, </span><span style="color:#005CC5">5</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#24292E">        notes_length </span><span style="color:#D73A49">=</span><span style="color:#24292E"> random.randint(</span><span style="color:#005CC5">0</span><span style="color:#24292E">, </span><span style="color:#005CC5">500</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#24292E">        activity_count </span><span style="color:#D73A49">=</span><span style="color:#24292E"> random.randint(</span><span style="color:#005CC5">0</span><span style="color:#24292E">, </span><span style="color:#005CC5">20</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#24292E">        days_since_last_activity </span><span style="color:#D73A49">=</span><span style="color:#24292E"> random.randint(</span><span style="color:#005CC5">0</span><span style="color:#24292E">, </span><span style="color:#005CC5">90</span><span style="color:#24292E">)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">        # Basic weighted polynomial equation determining the heat map intensity of the lead</span></span>
+<span class="line"><span style="color:#24292E">        score </span><span style="color:#D73A49">=</span><span style="color:#24292E"> (</span></span>
+<span class="line"><span style="color:#24292E">            has_company </span><span style="color:#D73A49">*</span><span style="color:#005CC5"> 15</span></span>
+<span class="line"><span style="color:#D73A49">            +</span><span style="color:#24292E"> has_phone </span><span style="color:#D73A49">*</span><span style="color:#005CC5"> 10</span></span>
+<span class="line"><span style="color:#D73A49">            +</span><span style="color:#24292E"> tag_count </span><span style="color:#D73A49">*</span><span style="color:#005CC5"> 5</span></span>
+<span class="line"><span style="color:#D73A49">            +</span><span style="color:#005CC5"> min</span><span style="color:#24292E">(notes_length </span><span style="color:#D73A49">/</span><span style="color:#005CC5"> 50</span><span style="color:#24292E">, </span><span style="color:#005CC5">10</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#D73A49">            +</span><span style="color:#24292E"> activity_count </span><span style="color:#D73A49">*</span><span style="color:#005CC5"> 3</span></span>
+<span class="line"><span style="color:#D73A49">            -</span><span style="color:#24292E"> days_since_last_activity </span><span style="color:#D73A49">*</span><span style="color:#005CC5"> 0.5</span></span>
+<span class="line"><span style="color:#24292E">        )</span></span>
+<span class="line"><span style="color:#24292E">        </span></span>
+<span class="line"><span style="color:#D73A49">        if</span><span style="color:#24292E"> score </span><span style="color:#D73A49">></span><span style="color:#005CC5"> 40</span><span style="color:#24292E">:</span></span>
+<span class="line"><span style="color:#24292E">            label </span><span style="color:#D73A49">=</span><span style="color:#032F62"> "hot"</span></span>
+<span class="line"><span style="color:#D73A49">        elif</span><span style="color:#24292E"> score </span><span style="color:#D73A49">></span><span style="color:#005CC5"> 20</span><span style="color:#24292E">:</span></span>
+<span class="line"><span style="color:#24292E">            label </span><span style="color:#D73A49">=</span><span style="color:#032F62"> "warm"</span></span>
+<span class="line"><span style="color:#D73A49">        else</span><span style="color:#24292E">:</span></span>
+<span class="line"><span style="color:#24292E">            label </span><span style="color:#D73A49">=</span><span style="color:#032F62"> "cold"</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E">        records.append({</span></span>
+<span class="line"><span style="color:#032F62">            "has_company"</span><span style="color:#24292E">: has_company,</span></span>
+<span class="line"><span style="color:#032F62">            "has_phone"</span><span style="color:#24292E">: has_phone,</span></span>
+<span class="line"><span style="color:#032F62">            "tag_count"</span><span style="color:#24292E">: tag_count,</span></span>
+<span class="line"><span style="color:#032F62">            "activity_count"</span><span style="color:#24292E">: activity_count,</span></span>
+<span class="line"><span style="color:#032F62">            "days_since_last_activity"</span><span style="color:#24292E">: days_since_last_activity,</span></span>
+<span class="line"><span style="color:#032F62">            "label"</span><span style="color:#24292E">: label,</span></span>
+<span class="line"><span style="color:#24292E">        })</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#24292E">    df </span><span style="color:#D73A49">=</span><span style="color:#24292E"> pd.DataFrame(records)</span></span>
+<span class="line"><span style="color:#24292E">    df.to_csv(</span><span style="color:#032F62">"ml/training_data.csv"</span><span style="color:#24292E">, </span><span style="color:#E36209">index</span><span style="color:#D73A49">=</span><span style="color:#005CC5">False</span><span style="color:#24292E">)</span></span>
+<span class="line"><span style="color:#005CC5">    print</span><span style="color:#24292E">(</span><span style="color:#D73A49">f</span><span style="color:#032F62">"✓ Generated </span><span style="color:#005CC5">{ROWS}</span><span style="color:#032F62"> records for Machine Learning Model Training"</span><span style="color:#24292E">)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#D73A49">if</span><span style="color:#005CC5"> __name__</span><span style="color:#D73A49"> ==</span><span style="color:#032F62"> "__main__"</span><span style="color:#24292E">:</span></span>
+<span class="line"><span style="color:#24292E">    generate()</span></span>
+<span class="line"></span></code></pre>
+<hr>
+<h2>9. Conclusion</h2>
+<h3>9.1 Summary of the System</h3>
+<p>The LivoCRM platform showcases an exquisitely crafted Database Management System fundamentally engineered to sustain demanding operational pipelines inherent in the B2B renewable energy commercial marketplace. By enforcing uncompromising relational data integrity standards spanning a multitude of normalized tables (<code>users</code>, <code>contacts</code>, <code>deals</code>, <code>activities</code>), the system eradicates destructive redundancies and transactional anomalies.</p>
+<h3>9.2 Key Achievements</h3>
+<ul>
+<li><strong>Analytical Powerhouse:</strong> Demonstrated the immense flexibility of aggregated SQL, translating raw data into mathematically nuanced weighted enterprise forecast matrices.</li>
+<li><strong>Architectural Soundness:</strong> Effectively maintained standard Normal Forms (1NF through 3NF) using native RDBMS tools and foreign keys operating gracefully via <code>ON DELETE CASCADE</code> cascading actions.</li>
+<li><strong>Modern Paradigms deployed:</strong> The integration of decoupled Machine Learning systems parsing raw database rows into inferenced predictive behaviors ("Hot" or "Cold" leads), coupled with bleeding-edge async execution, represents the zenith of contemporary DBMS deployment strategies.</li>
+</ul>
+<h3>9.3 Future Improvements</h3>
+<ol>
+<li><strong>Schema Sharding / Partitioning:</strong> As the application gathers immense rows over years of operation, implementing table partitioning based on the <code>created_at</code> timestamp parameter per respective financial quarter will optimize query search windows dramatically.</li>
+<li><strong>Read-Replicas Construction:</strong> Offloading the intensive <code>analytics_router</code> aggregation queries exclusively to a secondary DBMS Read-Replica structure will severely free up the Primary Node to dedicate all compute latency explicitly towards writing new deals and executing <code>INSERT</code>/<code>UPDATE</code> mutation operations.</li>
+<li><strong>Graphing Extensions:</strong> Integrating Graph Database sub-networks (like Neo4j alongside PostgreSQL) to map out extremely granular interpersonal relationships inside massive multinational corporate entities (who reports to whom inside a contact organization).</li>
+</ol>
+</body>
+</html>
