@@ -57,8 +57,8 @@ def classify_intent(
             max_tokens=100,
             temperature=0.0,
         )
-    except BedrockServiceError:
-        logger.warning("Intent classification failed, defaulting to GENERAL_CHAT")
+    except BedrockServiceError as exc:
+        logger.warning(f"Intent classification failed (BedrockServiceError): {exc}")
         return ClassificationResult(intent=Intent.GENERAL_CHAT, confidence=0.0)
 
     try:

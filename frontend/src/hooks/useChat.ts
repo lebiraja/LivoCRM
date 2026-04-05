@@ -22,6 +22,7 @@ export function useChat() {
     setMessages,
     addMessage,
     updateLastAiMessage,
+    updateSessionTitle,
     setLoading,
     setStreaming,
   } = useChatStore();
@@ -125,6 +126,10 @@ export function useChat() {
     async (content: string) => {
       if (!content.trim()) return;
 
+      // Check if this is the first message (session still named "New Chat")
+      const currentSession = sessions.find((s) => s.id === activeSessionId);
+      const isFirstExchange = currentSession?.title === "New Chat";
+
       const userMsg: ChatMessage = {
         id: `user-${Date.now()}`,
         session_id: activeSessionId || "",
@@ -143,6 +148,21 @@ export function useChat() {
         );
         // Backend returns both messages; add the AI response
         addMessage(response.ai_message);
+
+        // If the backend already returned a title, update immediately
+        if (response.session_title && response.session_title !== "New Chat") {
+          updateSessionTitle(activeSessionId || "", response.session_title);
+        } else if (isFirstExchange) {
+          // Title is generated async in background — poll after 3s
+          setTimeout(async () => {
+            try {
+              const refreshed = await chatApi.listSessions();
+              setSessions(refreshed);
+            } catch {
+              // Ignore refresh failure
+            }
+          }, 3000);
+        }
       } catch (err) {
         console.error("Chat send failed:", err);
         addMessage({
@@ -157,7 +177,7 @@ export function useChat() {
         setStreaming(false);
       }
     },
-    [activeSessionId, wsStatus, send, addMessage, setStreaming]
+    [activeSessionId, sessions, wsStatus, send, addMessage, setStreaming, updateSessionTitle, setSessions]
   );
 
   return {

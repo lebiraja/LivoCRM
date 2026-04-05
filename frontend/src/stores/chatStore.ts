@@ -19,6 +19,7 @@ interface ChatState {
   setMessages: (messages: ChatMessage[]) => void;
   addMessage: (message: ChatMessage) => void;
   updateLastAiMessage: (content: string) => void;
+  updateSessionTitle: (sessionId: string, title: string) => void;
   setLoading: (loading: boolean) => void;
   setStreaming: (streaming: boolean) => void;
   setWsStatus: (status: WsStatus) => void;
@@ -57,6 +58,13 @@ export const useChatStore = create<ChatState>((set) => ({
       }
       return { messages: msgs };
     }),
+
+  updateSessionTitle: (sessionId, title) =>
+    set((s) => ({
+      sessions: s.sessions.map((sess) =>
+        sess.id === sessionId ? { ...sess, title } : sess
+      ),
+    })),
 
   setLoading: (loading) => set({ loading }),
   setStreaming: (streaming) => set({ streaming }),

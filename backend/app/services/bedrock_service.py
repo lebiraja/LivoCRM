@@ -70,9 +70,26 @@ def chat_completion(
         raise BedrockServiceError("Bedrock is disabled by configuration")
 
     client = _get_client()
+    # Sanitize messages to meet Bedrock Converse API requirements:
+    # 1. Must start with a 'user' message
+    # 2. Roles must strictly alternate
+    sanitized = []
+    for m in messages:
+        if not sanitized and m["role"] != "user":
+            continue  # Drop leading assistant messages
+        if sanitized and sanitized[-1]["role"] == m["role"]:
+            # Combine consecutive messages of the same role
+            sanitized[-1]["content"] += "\n\n" + m["content"]
+        else:
+            sanitized.append({"role": m["role"], "content": m["content"]})
+            
+    # Guarantee there's at least one message
+    if not sanitized:
+        sanitized.append({"role": "user", "content": "Hello"})
+        
     formatted_messages = [
         {"role": m["role"], "content": [{"text": m["content"]}]}
-        for m in messages
+        for m in sanitized
     ]
 
     try:
