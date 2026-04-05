@@ -69,9 +69,9 @@ def extract_data(
             max_tokens=500,
             temperature=0.0,
         )
-    except BedrockServiceError:
-        logger.warning("Data extraction failed, returning empty result")
-        return ExtractionResult()
+    except BedrockServiceError as exc:
+        logger.warning(f"Data extraction failed (BedrockServiceError): {exc}")
+        return ExtractionResult(extracted=already_collected or {})
 
     try:
         cleaned = raw.strip()
@@ -80,7 +80,6 @@ def extract_data(
         data = json.loads(cleaned)
 
         extracted = data.get("extracted", {})
-        missing = data.get("missing_required", [])
 
         # Merge: anything already collected + newly extracted
         merged = {**already, **extracted}
@@ -96,6 +95,9 @@ def extract_data(
             missing_required=actual_missing,
             raw_response=raw,
         )
-    except (json.JSONDecodeError, ValueError) as exc:
-        logger.warning("Could not parse extraction response: %s — raw: %s", exc, raw[:200])
-        return ExtractionResult(raw_response=raw)
+    except json.JSONDecodeError:
+        logger.warning(f"Failed to parse extractor response: {raw}")
+        return ExtractionResult(extracted=already, raw_response=raw)
+    except Exception as exc:
+        logger.warning(f"Unexpected error in extract_data: {exc}")
+        return ExtractionResult(extracted=already, raw_response=raw)

@@ -57,6 +57,8 @@ class SessionContext:
     collected_data: dict[str, Any] = field(default_factory=dict)
     missing_required: list[str] = field(default_factory=list)
     history: list[dict[str, str]] = field(default_factory=list)
+    # Remembers the most recently saved entity so follow-up updates work
+    last_saved_entity: dict[str, Any] | None = None
 
 
 class Orchestrator:
@@ -111,8 +113,29 @@ class Orchestrator:
         result = classify_intent(user_message, ctx.history)
         ctx.intent = result.intent
 
+        # ── Follow-up update detection ──────────────────────────────────────
+        # If the user just saved an entity and is now providing more data
+        # (email, phone, etc.), treat it as an UPDATE for that entity.
+        if ctx.last_saved_entity and self._looks_like_followup(ctx, result.intent, user_message):
+            saved = ctx.last_saved_entity
+            entity_type = saved.get("type", "")
+            update_intent_map = {
+                "contact": Intent.UPDATE_CONTACT,
+                "deal": Intent.UPDATE_DEAL,
+            }
+            update_intent = update_intent_map.get(entity_type)
+            if update_intent:
+                ctx.intent = update_intent
+                # Pre-seed with the data that was already saved + entity ID for lookup
+                ctx.collected_data = dict(saved.get("data", {}))
+                if saved.get("id"):
+                    ctx.collected_data["_entity_id"] = saved["id"]
+                ctx.last_saved_entity = None  # Consume — don't re-trigger
+                return self._collect_data(ctx, user_message)
+
+        # Clear last_saved_entity if user starts a genuinely new flow
         if result.intent in ENTITY_INTENTS:
-            # Move straight to data collection
+            ctx.last_saved_entity = None
             return self._collect_data(ctx, user_message)
 
         if result.intent == Intent.GENERAL_CHAT:
@@ -139,6 +162,30 @@ class Orchestrator:
         # Fallback
         ctx.state = SessionState.IDLE
         return self._handle_general_chat(ctx, user_message)
+
+    def _looks_like_followup(
+        self,
+        ctx: SessionContext,
+        classified_intent: Intent,
+        user_message: str,
+    ) -> bool:
+        """Detect if a message is a follow-up update to a just-saved entity.
+
+        Triggers when the intent is entity-related OR the message contains
+        typical data fields like email, phone, etc.
+        """
+        # If the classifier detected an entity intent, it's likely a follow-up
+        if classified_intent in ENTITY_INTENTS:
+            return True
+
+        # Check for common data patterns (email, phone, address mentions)
+        msg_lower = user_message.lower()
+        data_keywords = [
+            "email", "mail", "phone", "number", "address",
+            "update", "add", "also", "and the", "change",
+            "@",  # email pattern
+        ]
+        return any(kw in msg_lower for kw in data_keywords)
 
     def _collect_data(
         self, ctx: SessionContext, user_message: str
@@ -235,8 +282,17 @@ class Orchestrator:
         """Handle yes/no confirmation response."""
         msg = user_message.strip().lower()
 
+        # Tokenize message to avoid substring matches on words, but keep full string check as fallback
+        words = msg.replace(".", " ").replace(",", " ").split()
+
+        affirmative = ["yes", "yep", "yeah", "correct", "confirm", "save", "looks good", "go ahead", "do it", "ok", "okay", "sure", "fine"]
+        negative = ["no", "nope", "change", "edit", "wrong", "fix", "update", "cancel", "stop", "abort"]
+
+        is_affirmative = any(word in words for word in affirmative) or any(phrase in msg for phrase in ["looks good", "go ahead", "do it"])
+        is_negative = any(word in words for word in negative)
+
         # Check for affirmative responses
-        if any(word in msg for word in ["yes", "yep", "yeah", "correct", "confirm", "save", "looks good", "go ahead", "do it"]):
+        if is_affirmative:
             ctx.state = SessionState.SAVING
             entity_type = (
                 ctx.intent.value
@@ -246,6 +302,15 @@ class Orchestrator:
                 .lower()
             )
             ai_msg = f"✅ Saving your {entity_type} now..."
+
+            # If the user also included a completely different intent in the same confirmation message
+            # e.g., "okay also add a lead for 10000"
+            if len(words) > 3:
+                result = classify_intent(user_message, ctx.history)
+                if result.intent in ENTITY_INTENTS and result.intent != ctx.intent:
+                    next_task = result.intent.value.replace("ADD_", "add a ").replace("LOG_", "log an ").replace("UPDATE_", "update the ").lower()
+                    ai_msg += f"\n\n(I noticed you also want to {next_task}. Please re-send that once the {entity_type} is saved!)"
+
             response = OrchestratorResponse(
                 ai_message=ai_msg,
                 session_state=ctx.state,
@@ -257,7 +322,7 @@ class Orchestrator:
             return response
 
         # Check for negative / change requests
-        if any(word in msg for word in ["no", "nope", "change", "edit", "wrong", "fix", "update"]):
+        if is_negative:
             ctx.state = SessionState.COLLECTING
             ai_msg = "No problem! What would you like to change?"
             response = OrchestratorResponse(
@@ -269,7 +334,17 @@ class Orchestrator:
             ctx.history.append({"role": "assistant", "content": ai_msg})
             return response
 
-        # Ambiguous — extract any additional data and re-confirm
+        # Ambiguous — it might be a completely new intent (e.g. user ignored the confirmation)
+        result = classify_intent(user_message, ctx.history)
+        if result.intent in ENTITY_INTENTS and result.intent != ctx.intent:
+            # User shifted intents directly from the confirmation prompt
+            ctx.state = SessionState.IDLE
+            ctx.intent = result.intent
+            ctx.collected_data = {}
+            ctx.missing_required = []
+            return self._collect_data(ctx, user_message)
+
+        # Still ambiguous but not a new entity intent — extract any additional data and re-confirm
         return self._collect_data(ctx, user_message)
 
     def _handle_general_chat(

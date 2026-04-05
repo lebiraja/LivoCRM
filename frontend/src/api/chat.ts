@@ -38,4 +38,16 @@ export const chatApi = {
     );
     return data;
   },
+
+  /** Rename a chat session. */
+  renameSession: async (
+    sessionId: string,
+    title: string
+  ): Promise<ChatSession> => {
+    const { data } = await client.patch<ChatSession>(
+      `/chat/sessions/${sessionId}/title`,
+      { title }
+    );
+    return data;
+  },
 };

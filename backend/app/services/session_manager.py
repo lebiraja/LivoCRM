@@ -45,6 +45,7 @@ def _serialize(ctx: SessionContext) -> str:
         "collected_data": ctx.collected_data,
         "missing_required": ctx.missing_required,
         "history": ctx.history[-20:],  # Keep last 20 messages to limit size
+        "last_saved_entity": ctx.last_saved_entity,
     })
 
 
@@ -59,6 +60,7 @@ def _deserialize(data: str) -> SessionContext:
     ctx.collected_data = obj.get("collected_data", {})
     ctx.missing_required = obj.get("missing_required", [])
     ctx.history = obj.get("history", [])
+    ctx.last_saved_entity = obj.get("last_saved_entity")
     return ctx
 
 
@@ -106,8 +108,21 @@ def clear_context(session_id: UUID) -> None:
             logger.warning("Redis delete failed for session %s", sid)
 
 
-def reset_context(session_id: UUID) -> SessionContext:
-    """Reset a session context to IDLE (start fresh)."""
+def reset_context(
+    session_id: UUID,
+    *,
+    last_saved_entity: dict | None = None,
+) -> SessionContext:
+    """Reset a session context to IDLE while preserving conversation history.
+
+    After saving an entity, we clear the extraction state but keep:
+    - Conversation history (so the AI remembers the conversation)
+    - Last saved entity info (so the user can immediately follow up)
+    """
+    old_ctx = _context_store.get(session_id)
     ctx = SessionContext()
+    if old_ctx:
+        ctx.history = old_ctx.history[-20:]  # Preserve conversation history
+    ctx.last_saved_entity = last_saved_entity
     _save_context(session_id, ctx)
     return ctx

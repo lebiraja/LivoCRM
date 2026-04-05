@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,6 +28,7 @@ from app.schemas.chat import (
 )
 from app.services.ai_engine.orchestrator import Orchestrator, OrchestratorResponse, SessionState
 from app.services.session_manager import clear_context, get_context, reset_context, _save_context
+from app.services.session_naming import generate_session_title
 from app.routers.websocket import push_ai_typing, push_dashboard_update, push_entity_created
 from app.services.analytics_cache import analytics_cache
 
@@ -228,21 +231,20 @@ async def send_message(
             )
             stats = await analytics_cache.invalidate(user.id)
             await push_dashboard_update(user.id, stats)
-        # Reset context for next interaction
-        reset_context(session_id)
-
-    # Update session title from first meaningful intent
-    if session.title == "New Chat" and orch_response.intent:
-        entity = (
-            orch_response.intent
-            .replace("ADD_", "New ")
-            .replace("LOG_", "Log ")
-            .replace("UPDATE_", "Update ")
-            .replace("_", " ")
-            .title()
+        # Transition to IDLE — preserve history + remember what was saved
+        reset_context(
+            session_id,
+            last_saved_entity={
+                "type": _intent_to_entity(orch_response.intent),
+                "id": str(saved_entity_id) if saved_entity_id else None,
+                "data": orch_response.extracted_data,
+                "intent": orch_response.intent,
+            },
         )
-        name = orch_response.extracted_data.get("name", "")
-        session.title = f"{entity}: {name}" if name else entity
+
+    # ── Auto-naming: trigger on first exchange only ────────────────────────
+    # Check BEFORE committing new messages (pre-exchange snapshot)
+    is_first_exchange = session.title == "New Chat"
 
     # Update session timestamp
     session.updated_at = datetime.utcnow()
@@ -250,6 +252,17 @@ async def send_message(
     await db.commit()
     await db.refresh(user_msg)
     await db.refresh(ai_msg)
+
+    # Schedule background title generation (non-blocking, after commit)
+    if is_first_exchange:
+        asyncio.create_task(
+            _auto_name_session(
+                session_id=session_id,
+                user_id=user.id,
+                user_message=body.message,
+                ai_response=orch_response.ai_message,
+            )
+        )
 
     return ChatSendResponse(
         session_id=session_id,
@@ -260,7 +273,92 @@ async def send_message(
         extracted_data=orch_response.extracted_data,
         missing_fields=orch_response.missing_fields,
         ready_to_save=orch_response.ready_to_save,
+        session_title=session.title,
     )
+
+
+# ── Manual rename endpoint ──────────────────────────────────────────────────
+
+class _RenameBody(BaseModel):
+    title: str = Field(..., min_length=1, max_length=100)
+
+
+@router.patch("/sessions/{session_id}/title", response_model=ChatSessionRead)
+async def rename_session(
+    session_id: UUID,
+    body: _RenameBody,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Manually rename a chat session."""
+    result = await db.execute(
+        select(ChatSession).where(
+            ChatSession.id == session_id,
+            ChatSession.user_id == user.id,
+        )
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+
+    session.title = body.title.strip()[:100]
+    session.updated_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(session)
+
+    # Count messages
+    msg_count_result = await db.execute(
+        select(func.count(ChatMessage.id)).where(ChatMessage.session_id == session_id)
+    )
+    msg_count = msg_count_result.scalar() or 0
+
+    return ChatSessionRead(
+        id=session.id,
+        title=session.title,
+        status=session.status,
+        created_at=session.created_at,
+        updated_at=session.updated_at,
+        message_count=msg_count,
+    )
+
+
+# ── Background auto-naming ─────────────────────────────────────────────────
+
+async def _auto_name_session(
+    *,
+    session_id: UUID,
+    user_id: UUID,
+    user_message: str,
+    ai_response: str,
+) -> None:
+    """Generate and persist a session title in the background.
+
+    Runs as an asyncio task — never blocks the chat response.
+    Uses its own DB session so the main request isn't affected.
+    """
+    from app.database import async_session_factory
+
+    try:
+        # Run LLM call in a thread to avoid blocking the event loop
+        title = await asyncio.to_thread(
+            generate_session_title, user_message, ai_response
+        )
+
+        async with async_session_factory() as db:
+            result = await db.execute(
+                select(ChatSession).where(
+                    ChatSession.id == session_id,
+                    ChatSession.user_id == user_id,
+                )
+            )
+            session = result.scalar_one_or_none()
+            if session and session.title == "New Chat":
+                session.title = title
+                session.updated_at = datetime.utcnow()
+                await db.commit()
+                logger.info("Auto-named session %s → %r", session_id, title)
+    except Exception:
+        logger.exception("Background session naming failed for %s", session_id)
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
@@ -296,7 +394,7 @@ async def _save_entity(
     entity_id = None
 
     try:
-        if intent in ("ADD_CONTACT", "UPDATE_CONTACT"):
+        if intent == "ADD_CONTACT":
             entity_type = "contact"
             contact = Contact(
                 user_id=user_id,
@@ -310,7 +408,47 @@ async def _save_entity(
             await db.flush()
             entity_id = contact.id
 
-        elif intent in ("ADD_DEAL", "UPDATE_DEAL"):
+        elif intent == "UPDATE_CONTACT":
+            entity_type = "contact"
+            # Look up existing contact by _entity_id or by name
+            existing = None
+            eid = data.get("_entity_id")
+            if eid:
+                result = await db.execute(
+                    select(Contact).where(Contact.id == UUID(eid), Contact.user_id == user_id)
+                )
+                existing = result.scalar_one_or_none()
+            if not existing and data.get("name"):
+                result = await db.execute(
+                    select(Contact).where(
+                        Contact.user_id == user_id,
+                        Contact.name.ilike(f"%{data['name']}%"),
+                    ).limit(1)
+                )
+                existing = result.scalar_one_or_none()
+
+            if existing:
+                # Update only non-empty fields
+                for field_name in ("name", "email", "phone", "company", "notes"):
+                    val = data.get(field_name)
+                    if val:
+                        setattr(existing, field_name, val)
+                entity_id = existing.id
+            else:
+                # No existing contact found — create new
+                contact = Contact(
+                    user_id=user_id,
+                    name=data.get("name", ""),
+                    email=data.get("email", ""),
+                    phone=data.get("phone", ""),
+                    company=data.get("company", ""),
+                    notes=data.get("notes", ""),
+                )
+                db.add(contact)
+                await db.flush()
+                entity_id = contact.id
+
+        elif intent == "ADD_DEAL":
             entity_type = "deal"
             deal = Deal(
                 user_id=user_id,
@@ -335,6 +473,45 @@ async def _save_entity(
             db.add(deal)
             await db.flush()
             entity_id = deal.id
+
+        elif intent == "UPDATE_DEAL":
+            entity_type = "deal"
+            existing = None
+            eid = data.get("_entity_id")
+            if eid:
+                result = await db.execute(
+                    select(Deal).where(Deal.id == UUID(eid), Deal.user_id == user_id)
+                )
+                existing = result.scalar_one_or_none()
+            if not existing and data.get("title"):
+                result = await db.execute(
+                    select(Deal).where(
+                        Deal.user_id == user_id,
+                        Deal.title.ilike(f"%{data['title']}%"),
+                    ).limit(1)
+                )
+                existing = result.scalar_one_or_none()
+
+            if existing:
+                for field_name in ("title", "stage", "notes"):
+                    val = data.get(field_name)
+                    if val:
+                        setattr(existing, field_name, val)
+                val = data.get("value")
+                if val is not None:
+                    existing.value = float(val)
+                entity_id = existing.id
+            else:
+                deal = Deal(
+                    user_id=user_id,
+                    title=data.get("title", "Untitled Deal"),
+                    value=float(data.get("value", 0)),
+                    stage=data.get("stage", "lead"),
+                    notes=data.get("notes", ""),
+                )
+                db.add(deal)
+                await db.flush()
+                entity_id = deal.id
 
         elif intent == "LOG_ACTIVITY":
             entity_type = "activity"

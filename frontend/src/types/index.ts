@@ -171,6 +171,7 @@ export interface ChatSendResponse {
   extracted_data: Record<string, unknown>;
   missing_fields: string[];
   ready_to_save: boolean;
+  session_title?: string | null;
 }
 
 /** A CRM action the AI wants permission to execute */

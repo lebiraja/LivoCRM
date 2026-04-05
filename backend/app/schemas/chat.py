@@ -54,6 +54,7 @@ class ChatSendResponse(BaseModel):
     extracted_data: dict = {}
     missing_fields: list[str] = []
     ready_to_save: bool = False
+    session_title: str | None = None
 
 
 class ChatActionRead(BaseModel):
