@@ -1,37 +1,113 @@
-"""In-memory session context manager for the AI orchestrator.
+"""Redis-backed session context manager for the AI orchestrator.
 
-Stores SessionContext objects keyed by chat session UUID.
-In production, swap for Redis-backed storage. The interface stays the same.
+Stores SessionContext objects keyed by chat session UUID in Redis,
+so conversation state survives container restarts.
+Falls back to in-memory storage if Redis is unavailable.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 from uuid import UUID
 
-from app.services.ai_engine.orchestrator import SessionContext
+import redis
+
+from app.config import settings
+from app.services.ai_engine.orchestrator import SessionContext, SessionState
 
 logger = logging.getLogger(__name__)
 
-# Simple in-memory store; works for single-instance deployments.
-# For multi-instance, replace with Redis-backed dict.
+# Redis prefix to namespace session keys
+_REDIS_PREFIX = "livocrm:session:"
+_TTL_SECONDS = 3600  # 1 hour — sessions expire after inactivity
+
+# Connect to Redis
+try:
+    _redis = redis.from_url(settings.REDIS_URL, decode_responses=True)
+    _redis.ping()
+    _redis_available = True
+    logger.info("Session manager connected to Redis")
+except Exception:
+    _redis = None
+    _redis_available = False
+    logger.warning("Redis unavailable for session manager — using in-memory fallback")
+
+# Fallback in-memory store
 _context_store: dict[UUID, SessionContext] = {}
+
+
+def _serialize(ctx: SessionContext) -> str:
+    """Serialize SessionContext to JSON for Redis storage."""
+    return json.dumps({
+        "state": ctx.state.value,
+        "intent": ctx.intent.value if ctx.intent else None,
+        "collected_data": ctx.collected_data,
+        "missing_required": ctx.missing_required,
+        "history": ctx.history[-20:],  # Keep last 20 messages to limit size
+    })
+
+
+def _deserialize(data: str) -> SessionContext:
+    """Deserialize JSON from Redis back into a SessionContext."""
+    from app.services.ai_engine.intent_classifier import Intent
+    obj = json.loads(data)
+    ctx = SessionContext()
+    ctx.state = SessionState(obj.get("state", "IDLE"))
+    intent_str = obj.get("intent")
+    ctx.intent = Intent(intent_str) if intent_str else None
+    ctx.collected_data = obj.get("collected_data", {})
+    ctx.missing_required = obj.get("missing_required", [])
+    ctx.history = obj.get("history", [])
+    return ctx
 
 
 def get_context(session_id: UUID) -> SessionContext:
     """Get or create a SessionContext for a chat session."""
+    sid = str(session_id)
+
+    if _redis_available:
+        try:
+            data = _redis.get(f"{_REDIS_PREFIX}{sid}")
+            if data:
+                return _deserialize(data)
+        except Exception:
+            logger.warning("Redis read failed for session %s", sid)
+
+    # Fallback to in-memory
     if session_id not in _context_store:
         _context_store[session_id] = SessionContext()
     return _context_store[session_id]
 
 
+def _save_context(session_id: UUID, ctx: SessionContext) -> None:
+    """Persist the context after mutations."""
+    sid = str(session_id)
+
+    if _redis_available:
+        try:
+            _redis.setex(f"{_REDIS_PREFIX}{sid}", _TTL_SECONDS, _serialize(ctx))
+        except Exception:
+            logger.warning("Redis write failed for session %s", sid)
+
+    # Always update in-memory too (for current process)
+    _context_store[session_id] = ctx
+
+
 def clear_context(session_id: UUID) -> None:
     """Remove a session context (e.g., when session is closed)."""
+    sid = str(session_id)
     _context_store.pop(session_id, None)
+
+    if _redis_available:
+        try:
+            _redis.delete(f"{_REDIS_PREFIX}{sid}")
+        except Exception:
+            logger.warning("Redis delete failed for session %s", sid)
 
 
 def reset_context(session_id: UUID) -> SessionContext:
     """Reset a session context to IDLE (start fresh)."""
     ctx = SessionContext()
-    _context_store[session_id] = ctx
+    _save_context(session_id, ctx)
     return ctx

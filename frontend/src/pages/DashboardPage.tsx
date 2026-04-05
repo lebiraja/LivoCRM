@@ -110,47 +110,8 @@ function formatCurrency(n: number) {
   return `$${n}`;
 }
 
-// Mock data — matches actual API types
-const MOCK_SUMMARY: AnalyticsSummary = {
-  contacts: 1_284,
-  deals: 47,
-  activities: 312,
-  pipeline_value: 2_340_000,
-  won_value: 890_000,
-};
 
-const MOCK_WIN_RATE: WinRate = {
-  stages: {
-    Prospecting: 340_000,
-    Qualification: 520_000,
-    Proposal: 680_000,
-    Negotiation: 450_000,
-    Closing: 350_000,
-  },
-  win_rate: 34.2,
-  won: 18,
-  lost: 35,
-};
 
-const MOCK_FORECAST: Forecast = {
-  forecast: 360_000,
-  breakdown: {
-    Jul:  { raw: 165_000, weight: 0.9, weighted: 148_500 },
-    Aug:  { raw: 198_000, weight: 0.9, weighted: 178_200 },
-    Sep:  { raw: 225_000, weight: 0.85, weighted: 191_250 },
-    Oct:  { raw: 260_000, weight: 0.8, weighted: 208_000 },
-    Nov:  { raw: 320_000, weight: 0.7, weighted: 224_000 },
-    Dec:  { raw: 360_000, weight: 0.6, weighted: 216_000 },
-  },
-};
-
-const MOCK_ACTIVITIES: ActivityType[] = [
-  { id: "a1", activity_type: "call",    description: "Follow-up call with Acme Corp",  contact_id: "c1", deal_id: "d1", created_at: new Date().toISOString() },
-  { id: "a2", activity_type: "email",   description: "Sent proposal to GlobalTech",     contact_id: "c2", deal_id: "d2", created_at: new Date(Date.now() - 3_600_000).toISOString() },
-  { id: "a3", activity_type: "meeting", description: "Demo with StartupXYZ team",       contact_id: "c3", deal_id: "d3", created_at: new Date(Date.now() - 7_200_000).toISOString() },
-  { id: "a4", activity_type: "note",    description: "Updated pricing for Q4 deals",   contact_id: "c4", deal_id: null,  created_at: new Date(Date.now() - 10_800_000).toISOString() },
-  { id: "a5", activity_type: "task",    description: "Prepare SOW for DataFlow Inc",   contact_id: "c5", deal_id: "d4", created_at: new Date(Date.now() - 14_400_000).toISOString() },
-];
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
@@ -172,12 +133,13 @@ export default function DashboardPage() {
         setWinRate(wr);
         setForecast(f);
         setActivities(a.slice(0, 5));
-      } catch {
-        // Fallback to mock data for demo
-        setSummary(MOCK_SUMMARY);
-        setWinRate(MOCK_WIN_RATE);
-        setForecast(MOCK_FORECAST);
-        setActivities(MOCK_ACTIVITIES);
+      } catch (err) {
+        console.error("Dashboard load failed:", err);
+        // Show real empty state instead of fake mock data
+        setSummary({ contacts: 0, deals: 0, activities: 0, pipeline_value: 0, won_value: 0 });
+        setWinRate({ stages: {}, win_rate: 0, won: 0, lost: 0 });
+        setForecast({ forecast: 0, breakdown: {} });
+        setActivities([]);
       } finally {
         setLoading(false);
       }

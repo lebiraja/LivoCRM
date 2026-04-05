@@ -25,7 +25,7 @@ from app.schemas.chat import (
     ChatSessionRead,
 )
 from app.services.ai_engine.orchestrator import Orchestrator, OrchestratorResponse, SessionState
-from app.services.session_manager import clear_context, get_context, reset_context
+from app.services.session_manager import clear_context, get_context, reset_context, _save_context
 from app.routers.websocket import push_ai_typing, push_dashboard_update, push_entity_created
 from app.services.analytics_cache import analytics_cache
 
@@ -198,6 +198,9 @@ async def send_message(
     ctx = get_context(session_id)
     orch_response: OrchestratorResponse = _orchestrator.process_message(ctx, body.message)
     await push_ai_typing(session_id, is_typing=False)
+
+    # Persist context to Redis so it survives restarts
+    _save_context(session_id, ctx)
 
     # 3. Save the AI message
     ai_msg = ChatMessage(

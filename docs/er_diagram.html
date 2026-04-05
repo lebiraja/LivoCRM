@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LivoCRM - ER Diagram</title>
+    <!-- Include Mermaid.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #333;
+        }
+        p {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .mermaid {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>LivoCRM Entity-Relationship (ER) Diagram</h1>
+    <p>This diagram represents the core entities and their relationships within the Energy B2B CRM.</p>
+
+    <!-- The Mermaid markup -->
+    <div class="mermaid">
+        erDiagram
+            USER ||--o{ CONTACT : manages
+            USER ||--o{ DEAL : owns
+            USER ||--o{ PIPELINE_STAGE : configures
+            USER ||--o{ ACTIVITY : performs
+            USER ||--o{ CHAT_SESSION : initiates
+
+            CONTACT ||--o{ DEAL : has
+            CONTACT ||--o{ ACTIVITY : involves
+            
+            DEAL ||--o{ ACTIVITY : logs
+
+            CHAT_SESSION ||--o{ CHAT_MESSAGE : contains
+            CHAT_SESSION ||--o{ CONTACT : generates
+            CHAT_SESSION ||--o{ DEAL : generates
+
+            USER {
+                uuid id PK
+                string email
+                string full_name
+                string plan
+            }
+            CONTACT {
+                uuid id PK
+                uuid user_id FK
+                uuid ai_session_id FK
+                string name
+                string company
+                int lead_score
+            }
+            DEAL {
+                uuid id PK
+                uuid user_id FK
+                uuid contact_id FK
+                uuid ai_session_id FK
+                string title
+                float value
+                string stage
+                date expected_close
+            }
+            ACTIVITY {
+                uuid id PK
+                uuid user_id FK
+                uuid contact_id FK
+                uuid deal_id FK
+                string type
+                string description
+                datetime occurred_at
+            }
+            PIPELINE_STAGE {
+                uuid id PK
+                uuid user_id FK
+                string name
+                int position
+            }
+            CHAT_SESSION {
+                uuid id PK
+                uuid user_id FK
+                string title
+                string status
+            }
+            CHAT_MESSAGE {
+                uuid id PK
+                uuid session_id FK
+                string role
+                string content
+            }
+    </div>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    </script>
+
+</body>
+</html>

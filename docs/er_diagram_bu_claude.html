@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LivoCRM — ER Diagram</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #F0F4FF;
+      min-height: 100vh;
+      padding: 40px 24px 60px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+    header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1E293B;
+      letter-spacing: -0.5px;
+    }
+    header p {
+      margin-top: 6px;
+      font-size: 14px;
+      color: #64748B;
+    }
+    .badge {
+      display: inline-block;
+      margin-top: 10px;
+      background: #6366F1;
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 999px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── LEGEND ── */
+    .legend {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 32px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      color: #475569;
+      font-weight: 500;
+    }
+    .legend-dot {
+      width: 12px; height: 12px;
+      border-radius: 3px;
+    }
+
+    /* ── CANVAS ── */
+    .canvas {
+      position: relative;
+      width: 1260px;
+      height: 920px;
+    }
+
+    svg.relations {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    /* ── ENTITY CARD ── */
+    .entity {
+      position: absolute;
+      background: #FFFFFF;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 0 0 1.5px #E2E8F0;
+      overflow: hidden;
+      min-width: 190px;
+    }
+    .entity-header {
+      padding: 9px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1.5px solid #E2E8F0;
+    }
+    .entity-icon {
+      font-size: 15px;
+    }
+    .entity-name {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+    }
+    .entity-body {
+      padding: 6px 0;
+    }
+    .attr-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 12px;
+      font-size: 11.5px;
+      color: #334155;
+    }
+    .attr-row:hover { background: #F8FAFC; }
+    .attr-name { flex: 1; }
+    .attr-type {
+      font-size: 10px;
+      color: #94A3B8;
+      font-family: 'Courier New', monospace;
+    }
+    .tag {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .tag-pk  { background: #FEF3C7; color: #B45309; }
+    .tag-fk  { background: #EDE9FE; color: #6D28D9; }
+    .tag-idx { background: #DCFCE7; color: #166534; }
+
+    /* ── RELATIONSHIP LABEL ── */
+    .rel-label {
+      position: absolute;
+      background: white;
+      border: 1px solid #E2E8F0;
+      border-radius: 6px;
+      padding: 2px 7px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #6366F1;
+      white-space: nowrap;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      pointer-events: none;
+    }
+
+    /* ── CARDINALITY LEGEND ── */
+    .cardinality-legend {
+      margin-top: 32px;
+      background: white;
+      border-radius: 12px;
+      padding: 18px 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      border: 1.5px solid #E2E8F0;
+      width: 1260px;
+    }
+    .cardinality-legend h3 {
+      font-size: 12px;
+      font-weight: 700;
+      color: #1E293B;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 12px;
+    }
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 8px 24px;
+    }
+    .card-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #475569;
+      padding: 4px 0;
+      border-bottom: 1px solid #F1F5F9;
+    }
+    .card-entities {
+      font-weight: 600;
+      color: #1E293B;
+      flex: 1;
+    }
+    .card-cardinality {
+      background: #6366F1;
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      min-width: 30px;
+      text-align: center;
+    }
+    .card-verb {
+      font-style: italic;
+      color: #64748B;
+      font-size: 11px;
+    }
+
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>LivoCRM — Entity Relationship Diagram</h1>
+  <p>Renewable Energy B2B CRM · PostgreSQL Schema · Full Attribute View</p>
+  <span class="badge">DBMS Academic Project · URK24AI1005</span>
+</header>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#B45309;"></div> Primary Key (PK)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#6D28D9;"></div> Foreign Key (FK)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#166534;"></div> Indexed (IDX)</div>
+  <div class="legend-item">
+    <svg width="38" height="14" style="overflow:visible">
+      <line x1="0" y1="7" x2="38" y2="7" stroke="#6366F1" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <text x="19" y="5" text-anchor="middle" font-size="8" fill="#6366F1" font-weight="700">1 : N</text>
+    </svg> One-to-Many
+  </div>
+  <div class="legend-item">
+    <svg width="38" height="14" style="overflow:visible">
+      <line x1="0" y1="7" x2="38" y2="7" stroke="#10B981" stroke-width="1.5"/>
+    </svg> Optional FK (SET NULL)
+  </div>
+</div>
+
+<!-- Main Canvas -->
+<div class="canvas" id="canvas">
+
+  <!-- SVG for relationship lines -->
+  <svg class="relations" id="svg-relations"></svg>
+
+  <!-- ══════════════════════════════════════
+       1. USER  (top-center, anchor entity)
+  ══════════════════════════════════════ -->
+  <div class="entity" id="e-user" style="left:510px; top:20px;">
+    <div class="entity-header" style="background:#EEF2FF;">
+      <span class="entity-icon">👤</span>
+      <span class="entity-name" style="color:#4338CA;">User</span>
+    </div>
+    <div class="entity-body">
+      <div class="attr-row"><span class="attr-name">id</span><span class="attr-type">uuid</span><span class="tag tag-pk">PK</span></div>
+      <div class="attr-row"><span class="attr-name">email</span><span class="attr-type">varchar(255)</span><span class="tag tag-idx">IDX</span></div>
+      <div class="attr-row"><span class="attr-name">hashed_password</span><span class="attr-type">text</span></div>
+      <div class="attr-row"><span class="attr-name">full_name</span><span class="attr-type">varchar(255)</span></div>
+      <div class="attr-row"><span class="attr-name">plan</span><span class="attr-type">varchar(20)</span></div>
+      <div class="attr-row"><span class="attr-name">created_at</span><span class="attr-type">timestamptz</span></div>
+      <div class="attr-row"><span class="attr-name">updated_at</span><span class="attr-type">timestamptz</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       2. CONTACT  (left side)
+  ══════════════════════════════════════ -->
+  <div class="entity" id="e-contact" style="left:30px; top:260px;">
+    <div class="entity-header" style="background:#F0FDF4;">
+      <span class="entity-icon">🏢</span>
+      <span class="entity-name" style="color:#166534;">Contact</span>
+    </div>
+    <div class="entity-body">
+      <div class="attr-row"><span class="attr-name">id</span><span class="attr-type">uuid</span><span class="tag tag-pk">PK</span></div>
+      <div class="attr-row"><span class="attr-name">user_id</span><span class="attr-type">uuid</span><span class="tag tag-fk">FK</span></div>
+      <div class="attr-row"><span class="attr-name">ai_session_id</span><span class="attr-type">uuid</span><span class="tag tag-fk">FK</span></div>
+      <div class="attr-row"><span class="attr-name">name</span><span class="attr-type">varchar(255)</span></div>
+      <div class="attr-row"><span class="attr-name">email</span><span class="attr-type">varchar(255)</span></div>
+      <div class="attr-row"><span class="attr-name">phone</span><span class="attr-type">varchar(50)</span></div>
+      <div class="attr-row"><span class="attr-name">company</span><span class="attr-type">varchar(255)</span></div>
+      <div class="attr-row"><span class="attr-name">tags</span><span class="attr-type">json</span></div>
+      <div class="attr-row"><span class="attr-name">lead_score</span><span class="attr-type">integer</span></div>
+      <div class="attr-row"><span class="attr-name">notes</span><span class="attr-type">text</span></div>
+      <div class="attr-row"><span class="attr-name">source</span><span class="attr-type">varchar(30)</span></div>
+      <div class="attr-row"><span class="attr-name">created_at</span><span class="attr-type">timestamptz</span></div>
+      <div class="attr-row"><span class="attr-name">updated_at</span><span class="attr-type">timestamptz</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       3. DEAL  (center)
+  ══════════════════════════════════════ -->
+  <div class="entity" id="e-deal" style="left:480px; top:260px;">
+    <div class="entity-header" style="background:#FFF7ED;">
+      <span class="entity-icon">⚡</span>
+      <span class="entity-name" style="color:#C2410C;">Deal</span>
+    </div>
+    <div class="entity-body">
+      <div class="attr-row"><span class="attr-name">id</span><span class="attr-type">uuid</span><span class="tag tag-pk">PK</span></div>
+      <div class="attr-row"><span class="attr-name">user_id</span><span class="attr-type">uuid</span><span class="tag tag-fk">FK</span></div>
+      <div class="attr-row"><span class="attr-name">contact_id</span><span class="attr-type">uuid</span><span class="tag tag-fk">FK</span></div>
+      <div class="attr-row"><span class="attr-name">ai_session_id</span><span class="attr-type">uuid</span><span class="tag tag-fk">FK</span></div>
+      <div class="attr-row"><span class="attr-name">title</span><span class="attr-type">varchar(255)</span></div>
+      <div class="attr-row"><span class="attr-name">value</span><span class="attr-type">numeric(14,2)</span></div>
+      <div class="attr-row"><span class="attr-name">stage</span><span class="attr-type">varchar(50)</span></div>
+      <div class="attr-row"><span class="attr-name">status</span><span class="attr-type">varchar(20)</span></div>
+      <div class="attr-row"><span class="attr-name">expected_close</span><span class="attr-type">date</span></div>
+      <div class="attr-row"><span class="attr-name">notes</span><span class="attr-type">text</span></div>
+      <div class="attr-row"><span class="attr-name">source</span><span class="attr-type">varchar(30)</span></div>
+      <div class="attr-row"><span class="attr-name">created_at</span><span class="attr-type">timestamptz</span></div>
+      <div class="attr-row"><span class="attr-name">updated_at</span><span class="attr-type">timestamptz</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       4. ACTIVITY  (bottom-center)
+  ══════════════════════════════════════ -->
+  <div class="entity" id="e-activity" style="left:270px; top:650px;">
+    <div class="entity-header" style="background:#FFF1F2;">
+      <span class="entity-icon">📋</span>
+      <span class="entity-name" style="color:#BE123C;">Activity</span>
+    </div>
+    <div class="entity-body">
+      <div class="attr-row"><span class="attr-name">id</span><span class="attr-type">uuid</span><span class="tag tag-pk">PK</span></div>
+      <div class="attr-row"><span class="attr-name">user_id</span><span class="attr-type">uuid</span><span class="tag tag-fk">FK</span></div>
+      <div class="attr-row"><span class="attr-name">contact_id</span><span class="attr-type">uuid</span><span class="tag tag-fk">FK</span></div>
+      <div class="attr-row"><span class="attr-name">deal_id</span><span class="attr-type">uuid</span><span class="tag tag-fk">FK</span></div>
+      <div class="attr-row"><span class="attr-name">type</span><span class="attr-type">varchar(30)</span></div>
+      <div class="attr-row"><span class="attr-name">description</span><span class="attr-type">text</span></div>
+      <div class="attr-row"><span class="attr-name">occurred_at</span><span class="attr-type">timestamptz</span></div>
+      <div class="attr-row"><span class="attr-name">created_at</span><span class="attr-type">timestamptz</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       5. PIPELINE_STAGE  (far right)
+  ══════════════════════════════════════ -->
+  <div class="entity" id="e-pipeline" style="left:990px; top:260px;">
+    <div class="entity-header" style="background:#F0F9FF;">
+      <span class="entity-icon">🔀</span>
+      <span class="entity-name" style="color:#0369A1;">Pipeline Stage</span>
+    </div>
+    <div class="entity-body">
+      <div class="attr-row"><span class="attr-name">id</span><span class="attr-type">uuid</span><span class="tag tag-pk">PK</span></div>
+      <div class="attr-row"><span class="attr-name">user_id</span><span class="attr-type">uuid</span><span class="tag tag-fk">FK</span></div>
+      <div class="attr-row"><span class="attr-name">name</span><span class="attr-type">varchar(100)</span></div>
+      <div class="attr-row"><span class="attr-name">position</span><span class="attr-type">integer</span></div>
+      <div class="attr-row"><span class="attr-name">created_at</span><span class="attr-type">timestamptz</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       6. CHAT_SESSION  (right side)
+  ══════════════════════════════════════ -->
+  <div class="entity" id="e-session" style="left:790px; top:260px;">
+    <div class="entity-header" style="background:#FDF4FF;">
+      <span class="entity-icon">💬</span>
+      <span class="entity-name" style="color:#7E22CE;">Chat Session</span>
+    </div>
+    <div class="entity-body">
+      <div class="attr-row"><span class="attr-name">id</span><span class="attr-type">uuid</span><span class="tag tag-pk">PK</span></div>
+      <div class="attr-row"><span class="attr-name">user_id</span><span class="attr-type">uuid</span><span class="tag tag-fk">FK</span></div>
+      <div class="attr-row"><span class="attr-name">title</span><span class="attr-type">varchar(255)</span></div>
+      <div class="attr-row"><span class="attr-name">status</span><span class="attr-type">varchar(20)</span></div>
+      <div class="attr-row"><span class="attr-name">state</span><span class="attr-type">varchar(20)</span></div>
+      <div class="attr-row"><span class="attr-name">pending_data</span><span class="attr-type">jsonb</span></div>
+      <div class="attr-row"><span class="attr-name">context_summary</span><span class="attr-type">text</span></div>
+      <div class="attr-row"><span class="attr-name">entity_refs</span><span class="attr-type">jsonb</span></div>
+      <div class="attr-row"><span class="attr-name">created_at</span><span class="attr-type">timestamptz</span></div>
+      <div class="attr-row"><span class="attr-name">updated_at</span><span class="attr-type">timestamptz</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       7. CHAT_MESSAGE  (bottom-right)
+  ══════════════════════════════════════ -->
+  <div class="entity" id="e-message" style="left:760px; top:650px;">
+    <div class="entity-header" style="background:#FDF4FF;">
+      <span class="entity-icon">✉️</span>
+      <span class="entity-name" style="color:#7E22CE;">Chat Message</span>
+    </div>
+    <div class="entity-body">
+      <div class="attr-row"><span class="attr-name">id</span><span class="attr-type">uuid</span><span class="tag tag-pk">PK</span></div>
+      <div class="attr-row"><span class="attr-name">session_id</span><span class="attr-type">uuid</span><span class="tag tag-fk">FK</span></div>
+      <div class="attr-row"><span class="attr-name">role</span><span class="attr-type">varchar(20)</span></div>
+      <div class="attr-row"><span class="attr-name">content</span><span class="attr-type">text</span></div>
+      <div class="attr-row"><span class="attr-name">intent</span><span class="attr-type">varchar(50)</span></div>
+      <div class="attr-row"><span class="attr-name">extracted_data</span><span class="attr-type">jsonb</span></div>
+      <div class="attr-row"><span class="attr-name">action_taken</span><span class="attr-type">varchar(100)</span></div>
+      <div class="attr-row"><span class="attr-name">created_at</span><span class="attr-type">timestamptz</span></div>
+    </div>
+  </div>
+
+</div><!-- /canvas -->
+
+<!-- Relationship Table -->
+<div class="cardinality-legend">
+  <h3>Relationship Reference</h3>
+  <div class="card-grid">
+    <div class="card-row"><span class="card-entities">User → Contact</span><span class="card-cardinality">1 : N</span><span class="card-verb">manages (CASCADE)</span></div>
+    <div class="card-row"><span class="card-entities">User → Deal</span><span class="card-cardinality">1 : N</span><span class="card-verb">owns (CASCADE)</span></div>
+    <div class="card-row"><span class="card-entities">User → PipelineStage</span><span class="card-cardinality">1 : N</span><span class="card-verb">configures (CASCADE)</span></div>
+    <div class="card-row"><span class="card-entities">User → Activity</span><span class="card-cardinality">1 : N</span><span class="card-verb">performs (CASCADE)</span></div>
+    <div class="card-row"><span class="card-entities">User → ChatSession</span><span class="card-cardinality">1 : N</span><span class="card-verb">initiates (CASCADE)</span></div>
+    <div class="card-row"><span class="card-entities">Contact → Deal</span><span class="card-cardinality">1 : N</span><span class="card-verb">has (CASCADE)</span></div>
+    <div class="card-row"><span class="card-entities">Contact → Activity</span><span class="card-cardinality">1 : N</span><span class="card-verb">involves (CASCADE)</span></div>
+    <div class="card-row"><span class="card-entities">Deal → Activity</span><span class="card-cardinality">1 : N</span><span class="card-verb">logs (SET NULL)</span></div>
+    <div class="card-row"><span class="card-entities">ChatSession → ChatMessage</span><span class="card-cardinality">1 : N</span><span class="card-verb">contains (CASCADE)</span></div>
+    <div class="card-row"><span class="card-entities">ChatSession → Contact</span><span class="card-cardinality">1 : N</span><span class="card-verb">generates (SET NULL)</span></div>
+    <div class="card-row"><span class="card-entities">ChatSession → Deal</span><span class="card-cardinality">1 : N</span><span class="card-verb">generates (SET NULL)</span></div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// Dynamic SVG relationship line renderer
+// Gets entity bounding boxes and draws curved
+// lines between them with crow's foot notation
+// ─────────────────────────────────────────────
+
+const canvas = document.getElementById('canvas');
+const svg = document.getElementById('svg-relations');
+
+function getCenter(el) {
+  return {
+    x: el.offsetLeft + el.offsetWidth / 2,
+    y: el.offsetTop + el.offsetHeight / 2,
+  };
+}
+function getEdge(el, side) {
+  const l = el.offsetLeft, t = el.offsetTop;
+  const w = el.offsetWidth, h = el.offsetHeight;
+  if (side === 'top')    return { x: l + w/2, y: t };
+  if (side === 'bottom') return { x: l + w/2, y: t + h };
+  if (side === 'left')   return { x: l,       y: t + h/2 };
+  if (side === 'right')  return { x: l + w,   y: t + h/2 };
+}
+
+function drawLine(x1, y1, x2, y2, color, dash, label) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const cx1 = x1 + dx * 0.45, cy1 = y1;
+  const cx2 = x2 - dx * 0.45, cy2 = y2;
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', `M${x1},${y1} C${cx1},${cy1} ${cx2},${cy2} ${x2},${y2}`);
+  path.setAttribute('stroke', color);
+  path.setAttribute('stroke-width', '1.5');
+  path.setAttribute('fill', 'none');
+  if (dash) path.setAttribute('stroke-dasharray', '5,4');
+  svg.appendChild(path);
+
+  // Crow's foot at the "many" end (x2,y2)
+  const angle = Math.atan2(y2 - cy2, x2 - cx2);
+  const len = 10;
+  const spread = 0.35;
+  const fx1 = x2 - len * Math.cos(angle - spread);
+  const fy1 = y2 - len * Math.sin(angle - spread);
+  const fx2 = x2 - len * Math.cos(angle + spread);
+  const fy2 = y2 - len * Math.sin(angle + spread);
+  const fxm = x2 - len * 0.6 * Math.cos(angle);
+  const fym = y2 - len * 0.6 * Math.sin(angle);
+
+  const foot = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  foot.setAttribute('d', `M${fx1},${fy1} L${x2},${y2} L${fx2},${fy2} M${fxm},${fym} L${x2},${y2}`);
+  foot.setAttribute('stroke', color);
+  foot.setAttribute('stroke-width', '1.5');
+  foot.setAttribute('fill', 'none');
+  svg.appendChild(foot);
+
+  // "1" marker at source end
+  const oneEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  const ox = x1 + 14 * Math.cos(angle);
+  const oy = y1 + 14 * Math.sin(angle);
+  oneEl.setAttribute('x', ox); oneEl.setAttribute('y', oy + 4);
+  oneEl.setAttribute('text-anchor', 'middle');
+  oneEl.setAttribute('font-size', '10');
+  oneEl.setAttribute('font-weight', '700');
+  oneEl.setAttribute('fill', color);
+  oneEl.textContent = '1';
+  svg.appendChild(oneEl);
+
+  // Mid-line label
+  if (label) {
+    const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+    const lbl = document.createElement('div');
+    lbl.className = 'rel-label';
+    lbl.textContent = label;
+    lbl.style.left = (mx - 20) + 'px';
+    lbl.style.top  = (my - 10) + 'px';
+    lbl.style.color = color;
+    lbl.style.borderColor = color + '55';
+    canvas.appendChild(lbl);
+  }
+}
+
+window.addEventListener('load', () => {
+  const user     = document.getElementById('e-user');
+  const contact  = document.getElementById('e-contact');
+  const deal     = document.getElementById('e-deal');
+  const activity = document.getElementById('e-activity');
+  const pipeline = document.getElementById('e-pipeline');
+  const session  = document.getElementById('e-session');
+  const message  = document.getElementById('e-message');
+
+  // User → Contact  (top of user → right of contact)
+  const u_bot = getEdge(user, 'bottom');
+  const c_top = getEdge(contact, 'top');
+  drawLine(u_bot.x - 60, u_bot.y, c_top.x, c_top.y, '#4338CA', false, 'manages');
+
+  // User → Deal  (bottom of user → top of deal)
+  drawLine(u_bot.x, u_bot.y, getEdge(deal,'top').x, getEdge(deal,'top').y, '#C2410C', false, 'owns');
+
+  // User → PipelineStage
+  drawLine(getEdge(user,'right').x, getEdge(user,'right').y,
+           getEdge(pipeline,'top').x, getEdge(pipeline,'top').y, '#0369A1', false, 'configures');
+
+  // User → ChatSession
+  drawLine(getEdge(user,'right').x, getEdge(user,'right').y,
+           getEdge(session,'top').x, getEdge(session,'top').y, '#7E22CE', false, 'initiates');
+
+  // User → Activity
+  drawLine(u_bot.x + 30, u_bot.y,
+           getEdge(activity,'top').x, getEdge(activity,'top').y, '#BE123C', true, 'performs');
+
+  // Contact → Deal
+  drawLine(getEdge(contact,'right').x, getEdge(contact,'right').y,
+           getEdge(deal,'left').x, getEdge(deal,'left').y, '#166534', false, 'has');
+
+  // Contact → Activity
+  drawLine(getEdge(contact,'bottom').x, getEdge(contact,'bottom').y,
+           getEdge(activity,'left').x, getEdge(activity,'left').y, '#166534', false, 'involves');
+
+  // Deal → Activity
+  drawLine(getEdge(deal,'bottom').x, getEdge(deal,'bottom').y,
+           getEdge(activity,'top').x + 30, getEdge(activity,'top').y, '#C2410C', false, 'logs');
+
+  // ChatSession → ChatMessage
+  drawLine(getEdge(session,'bottom').x, getEdge(session,'bottom').y,
+           getEdge(message,'top').x, getEdge(message,'top').y, '#7E22CE', false, 'contains');
+
+  // ChatSession → Contact (dashed, SET NULL)
+  drawLine(getEdge(session,'left').x, getEdge(session,'left').y,
+           getEdge(contact,'right').x, getEdge(contact,'right').y + 30, '#10B981', true, 'generates');
+
+  // ChatSession → Deal (dashed, SET NULL)
+  drawLine(getEdge(session,'left').x, getEdge(session,'left').y + 20,
+           getEdge(deal,'right').x, getEdge(deal,'right').y, '#10B981', true, 'generates');
+});
+</script>
+
+</body>
+</html>

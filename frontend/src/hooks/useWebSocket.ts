@@ -51,10 +51,12 @@ export function useWebSocket({ sessionId, onMessage }: UseWebSocketOptions) {
       setWsStatus("disconnected");
       wsRef.current = null;
 
-      // Exponential back-off, max 30 s
-      const delay = Math.min(1000 * 2 ** retriesRef.current, 30_000);
-      retriesRef.current++;
-      timerRef.current = setTimeout(connect, delay);
+      // Exponential back-off, max 30 s, stop after 5 retries
+      if (retriesRef.current < 5) {
+        const delay = Math.min(1000 * 2 ** retriesRef.current, 30_000);
+        retriesRef.current++;
+        timerRef.current = setTimeout(connect, delay);
+      }
     };
 
     wsRef.current = ws;

@@ -33,45 +33,8 @@ const STAGE_DEFS: { id: DealStage; label: string; color: string }[] = [
   { id: "closed_lost",label: "Closed ✗",   color: "#EF4444" },
 ];
 
-// Fallback mock data (shown when the API is unavailable / unauthenticated)
-const MOCK_DEALS: Deal[] = [
-  {
-    id: "1", title: "Enterprise License", value: 120000,
-    stage: "proposal", status: "active",
-    contact_id: "c1", notes: "SOW sent",
-    created_at: "2024-02-01T10:00:00Z", updated_at: "2024-03-20T14:00:00Z",
-  },
-  {
-    id: "2", title: "API Integration", value: 85000,
-    stage: "qualified", status: "active",
-    contact_id: "c2", notes: "",
-    created_at: "2024-02-15T09:00:00Z", updated_at: "2024-03-18T11:00:00Z",
-  },
-  {
-    id: "3", title: "Startup Plan", value: 24000,
-    stage: "lead", status: "active",
-    contact_id: "c3", notes: "",
-    created_at: "2024-03-01T15:00:00Z", updated_at: "2024-03-15T09:00:00Z",
-  },
-  {
-    id: "4", title: "Data Pipeline", value: 95000,
-    stage: "negotiation", status: "active",
-    contact_id: "c4", notes: "Final pricing",
-    created_at: "2024-01-20T08:00:00Z", updated_at: "2024-03-22T16:00:00Z",
-  },
-  {
-    id: "5", title: "Annual Contract", value: 200000,
-    stage: "closed_won", status: "won",
-    contact_id: "c5", notes: "Awaiting signature",
-    created_at: "2024-01-10T12:00:00Z", updated_at: "2024-03-23T15:00:00Z",
-  },
-  {
-    id: "6", title: "Pilot Program", value: 15000,
-    stage: "lead", status: "active",
-    contact_id: "c6", notes: "",
-    created_at: "2024-03-10T14:00:00Z", updated_at: "2024-03-19T13:00:00Z",
-  },
-];
+
+
 
 function formatCurrency(n: number) {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
@@ -100,8 +63,9 @@ export default function PipelinePage() {
     try {
       const data = await dealsApi.list();
       setDeals(data);
-    } catch {
-      setDeals(MOCK_DEALS);
+    } catch (err) {
+      console.error("Failed to load deals:", err);
+      setDeals([]);
     } finally {
       setLoading(false);
     }
@@ -126,37 +90,35 @@ export default function PipelinePage() {
 
   const handleDrop = async (stage: DealStage) => {
     if (!draggedId) return;
-    try {
-      await dealsApi.moveStage(draggedId, stage);
-    } catch {
-      // Demo fallback – update locally
-    }
+    // Optimistic local update
     setDeals((prev) =>
       prev.map((d) => d.id === draggedId ? { ...d, stage } : d)
     );
+    try {
+      await dealsApi.moveStage(draggedId, stage);
+    } catch (err) {
+      console.error("Failed to move deal stage:", err);
+      // Revert on failure by reloading
+      loadData();
+    }
     setDraggedId(null);
     setDragOverStage(null);
   };
 
   // ── Create Deal ───────────────────────────────────────────────────────────
   const handleCreateDeal = async () => {
+    // Clean the payload — send null for empty contact_id (not empty string)
+    const payload = {
+      ...form,
+      contact_id: form.contact_id?.trim() || undefined,
+    };
     try {
-      const created = await dealsApi.create(form);
+      const created = await dealsApi.create(payload);
       setDeals((prev) => [...prev, created]);
-    } catch {
-      // Demo fallback
-      const newDeal: Deal = {
-        id: crypto.randomUUID(),
-        title: form.title,
-        value: form.value,
-        stage: form.stage,
-        status: "active",
-        contact_id: form.contact_id ?? "",
-        notes: form.notes ?? null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      setDeals((prev) => [...prev, newDeal]);
+    } catch (err) {
+      console.error("Failed to create deal:", err);
+      alert("Failed to create deal. Please try again.");
+      return; // Don't close dialog on failure
     }
     setDialogOpen(false);
     setForm({ ...EMPTY_FORM });

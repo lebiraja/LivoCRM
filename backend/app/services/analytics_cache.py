@@ -62,7 +62,7 @@ class AnalyticsCache:
         # Total contacts
         total_contacts = (
             await db.execute(
-                select(func.count()).select_from(Contact).where(Contact.owner_id == uid)
+                select(func.count()).select_from(Contact).where(Contact.user_id == uid)
             )
         ).scalar() or 0
 
@@ -73,7 +73,7 @@ class AnalyticsCache:
                 func.coalesce(func.sum(Deal.value), 0),
             )
             .select_from(Deal)
-            .where(Deal.owner_id == uid)
+            .where(Deal.user_id == uid)
         )
         deals_row = deals_result.one()
         total_deals = deals_row[0] or 0
@@ -84,7 +84,7 @@ class AnalyticsCache:
             await db.execute(
                 select(func.count())
                 .select_from(Deal)
-                .where(Deal.owner_id == uid, Deal.stage == "won")
+                .where(Deal.user_id == uid, Deal.status == "won")
             )
         ).scalar() or 0
 
@@ -94,7 +94,7 @@ class AnalyticsCache:
             await db.execute(
                 select(func.count())
                 .select_from(Activity)
-                .where(Activity.owner_id == uid, Activity.created_at >= week_ago)
+                .where(Activity.user_id == uid, Activity.created_at >= week_ago)
             )
         ).scalar() or 0
 

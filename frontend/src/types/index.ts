@@ -69,7 +69,7 @@ export interface DealCreate {
   title: string;
   value: number;
   stage: DealStage;
-  contact_id: string;
+  contact_id?: string;
   notes?: string;
   status?: DealStatus;
 }

@@ -134,31 +134,27 @@ export function useChat() {
       };
       addMessage(userMsg);
 
-      // Try WebSocket first, fall back to REST
-      if (wsStatus === "connected") {
-        send({ type: "message", content: content.trim() });
-      } else {
-        setStreaming(true);
-        try {
-          const response = await chatApi.sendMessage(
-            activeSessionId || "",
-            content.trim()
-          );
-          // Backend returns both messages; replace the optimistic user msg
-          // and add the AI response
-          addMessage(response.ai_message);
-        } catch {
-          addMessage({
-            id: `err-${Date.now()}`,
-            session_id: activeSessionId || "",
-            role: "assistant",
-            content:
-              "Sorry, I couldn't process your message. Please try again.",
-            created_at: new Date().toISOString(),
-          });
-        } finally {
-          setStreaming(false);
-        }
+      // Always use REST for sending — WS is only for typing indicators
+      setStreaming(true);
+      try {
+        const response = await chatApi.sendMessage(
+          activeSessionId || "",
+          content.trim()
+        );
+        // Backend returns both messages; add the AI response
+        addMessage(response.ai_message);
+      } catch (err) {
+        console.error("Chat send failed:", err);
+        addMessage({
+          id: `err-${Date.now()}`,
+          session_id: activeSessionId || "",
+          role: "assistant",
+          content:
+            "Sorry, I couldn't process your message. Please try again.",
+          created_at: new Date().toISOString(),
+        });
+      } finally {
+        setStreaming(false);
       }
     },
     [activeSessionId, wsStatus, send, addMessage, setStreaming]
