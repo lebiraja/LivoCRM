@@ -7,6 +7,7 @@ from app.routers.activities import router as activities_router
 from app.routers.analytics import router as analytics_router
 from app.routers.ai import router as ai_router
 from app.routers.chat import router as chat_router
+from app.routers.pipeline_stages import router as pipeline_stages_router
 from app.routers.websocket import router as ws_router
 
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     "analytics_router",
     "ai_router",
     "chat_router",
+    "pipeline_stages_router",
     "ws_router",
 ]

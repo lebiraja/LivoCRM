@@ -44,18 +44,7 @@ import { contactsApi } from "@/api/contacts";
 import { analyticsApi } from "@/api/analytics";
 import type { Contact, ContactCreate } from "@/types";
 import { cn } from "@/lib/utils";
-
-// Mock contacts for demo — all fields must match the Contact type
-const MOCK_CONTACTS: Contact[] = [
-  { id: "c1", name: "Sarah Johnson",  email: "sarah@acme.com",    phone: "+1 555-0101", company: "Acme Corp",           tags: ["enterprise", "hot-lead"], lead_score: 92, notes: "Interested in enterprise license",  created_at: "2024-01-15T10:00:00Z", updated_at: "2024-03-20T14:30:00Z" },
-  { id: "c2", name: "Mike Chen",      email: "mike@globaltech.io", phone: "+1 555-0102", company: "GlobalTech",          tags: ["api", "integration"],      lead_score: 78, notes: "Wants API integration",            created_at: "2024-02-10T09:00:00Z", updated_at: "2024-03-18T11:00:00Z" },
-  { id: "c3", name: "Lisa Park",      email: "lisa@startupxyz.co", phone: "+1 555-0103", company: "StartupXYZ",          tags: ["startup", "demo"],          lead_score: 65, notes: null,                              created_at: "2024-02-20T15:00:00Z", updated_at: "2024-03-15T09:00:00Z" },
-  { id: "c4", name: "James Wilson",   email: "james@bigcorp.com",  phone: "+1 555-0104", company: "BigCorp Industries",  tags: ["enterprise"],               lead_score: 85, notes: "Budget approved for Q2",          created_at: "2024-01-05T08:00:00Z", updated_at: "2024-03-22T16:00:00Z" },
-  { id: "c5", name: "Emma Davis",     email: "emma@dataflow.dev",  phone: "+1 555-0105", company: "DataFlow Inc",        tags: ["data", "pipeline"],         lead_score: 71, notes: "Needs data pipeline solution",    created_at: "2024-03-01T12:00:00Z", updated_at: "2024-03-21T10:00:00Z" },
-  { id: "c6", name: "Alex Rivera",    email: "alex@mediaco.tv",    phone: "+1 555-0106", company: "MediaCo",             tags: ["media", "growth"],          lead_score: 58, notes: null,                              created_at: "2024-03-05T14:00:00Z", updated_at: "2024-03-19T13:00:00Z" },
-  { id: "c7", name: "Priya Sharma",   email: "priya@finserv.com",  phone: "+1 555-0107", company: "FinServ Solutions",   tags: ["finance", "hot-lead"],      lead_score: 88, notes: "Ready to close by month end",    created_at: "2024-02-14T11:00:00Z", updated_at: "2024-03-23T15:00:00Z" },
-  { id: "c8", name: "David Kim",      email: "david@healthtec.io", phone: "+1 555-0108", company: "HealthTec",           tags: ["healthcare", "compliance"], lead_score: 45, notes: "Compliance requirements pending", created_at: "2024-03-10T10:00:00Z", updated_at: "2024-03-20T12:00:00Z" },
-];
+import { toast } from "sonner";
 
 function getScoreColor(score: number) {
   if (score >= 80) return "text-emerald-500";
@@ -99,26 +88,14 @@ export default function ContactsPage() {
   const loadContacts = useCallback(async () => {
     setLoading(true);
     try {
-      // API returns Contact[] (not paginated); we do client-side pagination
-      const all = await contactsApi.list({ search });
-      const filtered = search
-        ? all.filter((c) =>
-            `${c.name} ${c.email ?? ""} ${c.company ?? ""}`.toLowerCase().includes(search.toLowerCase())
-          )
-        : all;
-      const start = (page - 1) * PAGE_SIZE;
-      setContacts(filtered.slice(start, start + PAGE_SIZE));
-      setTotalPages(Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)));
-    } catch {
-      // Demo fallback
-      const filtered = search
-        ? MOCK_CONTACTS.filter((c) =>
-            `${c.name} ${c.email ?? ""} ${c.company ?? ""}`.toLowerCase().includes(search.toLowerCase())
-          )
-        : MOCK_CONTACTS;
-      const start = (page - 1) * PAGE_SIZE;
-      setContacts(filtered.slice(start, start + PAGE_SIZE));
-      setTotalPages(Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)));
+      // API now returns paginated response: { total, items }
+      const response = await contactsApi.list({ search, skip: (page - 1) * PAGE_SIZE, limit: PAGE_SIZE });
+      setContacts(response.items);
+      setTotalPages(Math.max(1, Math.ceil(response.total / PAGE_SIZE)));
+    } catch (err) {
+      toast.error("Failed to load contacts");
+      setContacts([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }

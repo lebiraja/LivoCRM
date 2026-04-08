@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, Text, text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, JSON, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -51,4 +51,11 @@ class Contact(Base):
     user = relationship("User", back_populates="contacts")
     deals = relationship("Deal", back_populates="contact")
     activities = relationship("Activity", back_populates="contact")
+
+    __table_args__ = (
+        CheckConstraint(
+            "source IN ('manual','ai_chat')",
+            name="ck_contacts_source"
+        ),
+    )
 

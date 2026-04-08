@@ -4,12 +4,13 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db, get_current_user
 from app.models.deal import Deal
 from app.models.user import User
+from app.schemas import PaginatedResponse
 from app.schemas.deal import DealCreate, DealUpdate, DealRead
 
 router = APIRouter(prefix="/deals", tags=["Deals"])
@@ -19,7 +20,7 @@ class StageUpdate(BaseModel):
     stage: str
 
 
-@router.get("/", response_model=list[DealRead])
+@router.get("/", response_model=PaginatedResponse[DealRead])
 async def list_deals(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
@@ -28,14 +29,27 @@ async def list_deals(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    stmt = select(Deal).where(Deal.user_id == user.id)
+    # Build base query
+    base_stmt = select(Deal).where(Deal.user_id == user.id)
     if stage:
-        stmt = stmt.where(Deal.stage == stage)
+        base_stmt = base_stmt.where(Deal.stage == stage)
     if status_filter:
-        stmt = stmt.where(Deal.status == status_filter)
-    stmt = stmt.order_by(Deal.created_at.desc()).offset(skip).limit(limit)
+        base_stmt = base_stmt.where(Deal.status == status_filter)
+
+    # Get total count
+    count_stmt = select(func.count()).select_from(Deal).where(Deal.user_id == user.id)
+    if stage:
+        count_stmt = count_stmt.where(Deal.stage == stage)
+    if status_filter:
+        count_stmt = count_stmt.where(Deal.status == status_filter)
+    total = (await db.execute(count_stmt)).scalar() or 0
+
+    # Get paginated results
+    stmt = base_stmt.order_by(Deal.created_at.desc()).offset(skip).limit(limit)
     result = await db.execute(stmt)
-    return result.scalars().all()
+    items = result.scalars().all()
+
+    return PaginatedResponse(total=total, items=items)
 
 
 @router.get("/{deal_id}", response_model=DealRead)

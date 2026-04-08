@@ -1,14 +1,14 @@
 import client from "./client";
-import type { Contact, ContactCreate } from "@/types";
+import type { Contact, ContactCreate, PaginatedResponse } from "@/types";
 
 export const contactsApi = {
-  /** GET /contacts/?skip=&limit=&search= → Contact[] */
+  /** GET /contacts/?skip=&limit=&search= → PaginatedResponse<Contact> */
   list: async (params?: {
     search?: string;
     skip?: number;
     limit?: number;
-  }): Promise<Contact[]> => {
-    const { data } = await client.get<Contact[]>("/contacts/", { params });
+  }): Promise<PaginatedResponse<Contact>> => {
+    const { data } = await client.get<PaginatedResponse<Contact>>("/contacts/", { params });
     return data;
   },
 

@@ -9,12 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import get_db, get_current_user
 from app.models.contact import Contact
 from app.models.user import User
+from app.schemas import PaginatedResponse
 from app.schemas.contact import ContactCreate, ContactUpdate, ContactRead
 
 router = APIRouter(prefix="/contacts", tags=["Contacts"])
 
 
-@router.get("/", response_model=list[ContactRead])
+@router.get("/", response_model=PaginatedResponse[ContactRead])
 async def list_contacts(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
@@ -22,12 +23,23 @@ async def list_contacts(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    stmt = select(Contact).where(Contact.user_id == user.id)
+    # Build base query
+    base_stmt = select(Contact).where(Contact.user_id == user.id)
     if search:
-        stmt = stmt.where(Contact.name.ilike(f"%{search}%"))
-    stmt = stmt.order_by(Contact.created_at.desc()).offset(skip).limit(limit)
+        base_stmt = base_stmt.where(Contact.name.ilike(f"%{search}%"))
+
+    # Get total count
+    count_stmt = select(func.count()).select_from(Contact).where(Contact.user_id == user.id)
+    if search:
+        count_stmt = count_stmt.where(Contact.name.ilike(f"%{search}%"))
+    total = (await db.execute(count_stmt)).scalar() or 0
+
+    # Get paginated results
+    stmt = base_stmt.order_by(Contact.created_at.desc()).offset(skip).limit(limit)
     result = await db.execute(stmt)
-    return result.scalars().all()
+    items = result.scalars().all()
+
+    return PaginatedResponse(total=total, items=items)
 
 
 @router.get("/{contact_id}", response_model=ContactRead)

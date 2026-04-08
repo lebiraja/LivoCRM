@@ -132,7 +132,7 @@ export default function DashboardPage() {
         setSummary(s);
         setWinRate(wr);
         setForecast(f);
-        setActivities(a.slice(0, 5));
+        setActivities(a.items.slice(0, 5));
       } catch (err) {
         console.error("Dashboard load failed:", err);
         // Show real empty state instead of fake mock data

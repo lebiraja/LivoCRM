@@ -1,15 +1,15 @@
 import client from "./client";
-import type { Deal, DealCreate, DealStage } from "@/types";
+import type { Deal, DealCreate, DealStage, PaginatedResponse } from "@/types";
 
 export const dealsApi = {
-  /** GET /deals/?skip=&limit=&stage=&status= → Deal[] */
+  /** GET /deals/?skip=&limit=&stage=&status= → PaginatedResponse<Deal> */
   list: async (params?: {
     stage?: DealStage;
     status?: string;
     skip?: number;
     limit?: number;
-  }): Promise<Deal[]> => {
-    const { data } = await client.get<Deal[]>("/deals/", { params });
+  }): Promise<PaginatedResponse<Deal>> => {
+    const { data } = await client.get<PaginatedResponse<Deal>>("/deals/", { params });
     return data;
   },
 

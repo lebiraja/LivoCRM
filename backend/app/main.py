@@ -1,9 +1,13 @@
 """LivoCRM — FastAPI entry point."""
 
 from contextlib import asynccontextmanager
+import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+logger = logging.getLogger(__name__)
 
 from app.routers import (
     auth_router,
@@ -13,6 +17,7 @@ from app.routers import (
     analytics_router,
     ai_router,
     chat_router,
+    pipeline_stages_router,
     ws_router,
 )
 
@@ -45,6 +50,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Global Exception Handler ────────────────────────────────────────────────
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch all unhandled exceptions and return generic error response."""
+    logger.exception("Unhandled exception", exc_info=exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
+
 # ── Routers ─────────────────────────────────────────────────────────────────
 API = "/api"
 app.include_router(auth_router, prefix=API)
@@ -54,6 +69,7 @@ app.include_router(activities_router, prefix=API)
 app.include_router(analytics_router, prefix=API)
 app.include_router(ai_router, prefix=API)
 app.include_router(chat_router, prefix=API)
+app.include_router(pipeline_stages_router, prefix=API)
 app.include_router(ws_router)  # WebSocket — no /api prefix (served at /ws/...)
 
 

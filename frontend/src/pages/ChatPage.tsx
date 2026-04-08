@@ -2,10 +2,12 @@ import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Wifi, WifiOff, Loader2 } from "lucide-react";
 import { useChat } from "@/hooks/useChat";
+import { useChatStore } from "@/stores/chatStore";
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatTypingIndicator } from "@/components/chat/ChatTypingIndicator";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ChatSessionList } from "@/components/chat/ChatSessionList";
+import { ConfirmationCard } from "@/components/chat/ConfirmationCard";
 
 export default function ChatPage() {
   const {
@@ -21,6 +23,8 @@ export default function ChatPage() {
     newSession,
     sendMessage,
   } = useChat();
+
+  const { pendingConfirmation, setPendingConfirmation } = useChatStore();
 
   // Load sessions on mount
   useEffect(() => {
@@ -102,6 +106,15 @@ export default function ChatPage() {
           ))}
 
           {streaming && <ChatTypingIndicator />}
+
+          {/* Confirmation card */}
+          {pendingConfirmation && (
+            <ConfirmationCard
+              confirmation={pendingConfirmation}
+              onConfirm={() => setPendingConfirmation(null)}
+              onDismiss={() => setPendingConfirmation(null)}
+            />
+          )}
 
           {/* Auto-scroll anchor */}
           <div ref={bottomRef} />
