@@ -11,6 +11,11 @@ class PipelineStageCreate(BaseModel):
     position: int = 0
 
 
+class PipelineStageUpdate(BaseModel):
+    name: str | None = None
+    position: int | None = None
+
+
 class PipelineStageRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

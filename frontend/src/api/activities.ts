@@ -1,16 +1,16 @@
 import client from "./client";
-import type { Activity, ActivityCreate } from "@/types";
+import type { Activity, ActivityCreate, PaginatedResponse } from "@/types";
 
 export const activitiesApi = {
-  /** GET /activities/?skip=&limit=&contact_id=&deal_id= → Activity[] */
+  /** GET /activities/?skip=&limit=&contact_id=&deal_id= → PaginatedResponse<Activity> */
   list: async (params?: {
     contact_id?: string;
     deal_id?: string;
     activity_type?: string;
     skip?: number;
     limit?: number;
-  }): Promise<Activity[]> => {
-    const { data } = await client.get<Activity[]>("/activities/", { params });
+  }): Promise<PaginatedResponse<Activity>> => {
+    const { data } = await client.get<PaginatedResponse<Activity>>("/activities/", { params });
     return data;
   },
 

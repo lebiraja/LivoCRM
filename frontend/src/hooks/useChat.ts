@@ -23,6 +23,7 @@ export function useChat() {
     addMessage,
     updateLastAiMessage,
     updateSessionTitle,
+    setPendingConfirmation,
     setLoading,
     setStreaming,
   } = useChatStore();
@@ -149,6 +150,11 @@ export function useChat() {
         // Backend returns both messages; add the AI response
         addMessage(response.ai_message);
 
+        // Handle confirmation payload if present
+        if (response.confirmation) {
+          setPendingConfirmation(response.confirmation);
+        }
+
         // If the backend already returned a title, update immediately
         if (response.session_title && response.session_title !== "New Chat") {
           updateSessionTitle(activeSessionId || "", response.session_title);
@@ -177,7 +183,7 @@ export function useChat() {
         setStreaming(false);
       }
     },
-    [activeSessionId, sessions, wsStatus, send, addMessage, setStreaming, updateSessionTitle, setSessions]
+    [activeSessionId, sessions, wsStatus, send, addMessage, setStreaming, updateSessionTitle, setSessions, setPendingConfirmation]
   );
 
   return {

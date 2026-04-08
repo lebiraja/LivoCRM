@@ -9,10 +9,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from collections import defaultdict
 from uuid import UUID
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from app.services.auth_service import verify_token
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ws", tags=["websocket"])
 
@@ -125,7 +129,29 @@ async def ws_dashboard(websocket: WebSocket, user_id: str):
     Clients simply connect and receive JSON events:
       {"type": "dashboard_update", "data": {...}}
       {"type": "entity_created", "entity_type": "contact", "entity_id": "...", "data": {...}}
+
+    Requires JWT token in query param: ?token=<jwt>
     """
+    # Extract and verify token from query params
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=4001, reason="Missing token")
+        logger.warning("WebSocket connection rejected (dashboard): missing token")
+        return
+
+    payload = verify_token(token)
+    if payload is None:
+        await websocket.close(code=4002, reason="Invalid token")
+        logger.warning("WebSocket connection rejected (dashboard): invalid token")
+        return
+
+    # Verify token user_id matches the requested user_id
+    token_user_id = payload.get("sub")
+    if token_user_id != user_id:
+        await websocket.close(code=4003, reason="Forbidden")
+        logger.warning("WebSocket connection rejected (dashboard): user_id mismatch")
+        return
+
     await manager.connect_dashboard(user_id, websocket)
     try:
         while True:
@@ -144,7 +170,26 @@ async def ws_chat(websocket: WebSocket, session_id: str):
 
     Clients simply connect and receive JSON events:
       {"type": "ai_typing", "is_typing": true/false}
+
+    Requires JWT token in query param: ?token=<jwt>
     """
+    # Extract and verify token from query params
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=4001, reason="Missing token")
+        logger.warning("WebSocket connection rejected (chat): missing token")
+        return
+
+    payload = verify_token(token)
+    if payload is None:
+        await websocket.close(code=4002, reason="Invalid token")
+        logger.warning("WebSocket connection rejected (chat): invalid token")
+        return
+
+    # Note: We don't verify session ownership here (would require DB query).
+    # The session ownership is verified when the user posts to /chat/sessions/{session_id}/message
+    # This WS is primarily for typing indicators and should be accessible once authenticated.
+
     await manager.connect_chat(session_id, websocket)
     try:
         while True:

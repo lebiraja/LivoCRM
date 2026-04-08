@@ -3,7 +3,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, Text, text
+from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -20,7 +20,7 @@ class Deal(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     contact_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("contacts.id", ondelete="SET NULL"), nullable=True
+        UUID(as_uuid=True), ForeignKey("contacts.id", ondelete="SET NULL"), nullable=True, index=True
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     value: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, server_default="0")
@@ -53,4 +53,19 @@ class Deal(Base):
     user = relationship("User", back_populates="deals")
     contact = relationship("Contact", back_populates="deals")
     activities = relationship("Activity", back_populates="deal")
+
+    __table_args__ = (
+        CheckConstraint(
+            "stage IN ('lead','qualified','proposal','negotiation','closed_won','closed_lost')",
+            name="ck_deals_stage"
+        ),
+        CheckConstraint(
+            "status IN ('active','won','lost')",
+            name="ck_deals_status"
+        ),
+        CheckConstraint(
+            "source IN ('manual','ai_chat')",
+            name="ck_deals_source"
+        ),
+    )
 

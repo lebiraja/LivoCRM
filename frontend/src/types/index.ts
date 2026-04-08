@@ -125,12 +125,10 @@ export interface AIScoreResult {
   features: Record<string, number>;
 }
 
-// Keep for legacy compatibility in any page that still uses it
+// Generic paginated response from API
 export interface PaginatedResponse<T> {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: T[];
+  total: number;
+  items: T[];
 }
 
 // Aliases kept so pages that reference old names don't hard-break
@@ -161,6 +159,14 @@ export interface ChatMessage {
   created_at: string;
 }
 
+/** Payload when AI is ready for user confirmation */
+export interface ConfirmationPayload {
+  intent: string;
+  entity_type: string;
+  data: Record<string, unknown>;
+  message: string;
+}
+
 /** Response from POST /chat/sessions/{id}/message */
 export interface ChatSendResponse {
   session_id: string;
@@ -172,23 +178,5 @@ export interface ChatSendResponse {
   missing_fields: string[];
   ready_to_save: boolean;
   session_title?: string | null;
-}
-
-/** A CRM action the AI wants permission to execute */
-export interface AIActionPayload {
-  /** e.g. "create_contact", "create_deal", "update_contact" */
-  type: string;
-  /** Human-readable entity name: "Contact", "Deal", … */
-  entity: string;
-  /** One-sentence description shown to the user */
-  description: string;
-  /** Structured data the action will use */
-  data: Record<string, unknown>;
-}
-
-/** Pending confirmation card shown in the chat UI */
-export interface ConfirmationRequest {
-  /** Unique id for this pending confirmation (UUID or temp id) */
-  id: string;
-  action: AIActionPayload;
+  confirmation?: ConfirmationPayload | null;
 }

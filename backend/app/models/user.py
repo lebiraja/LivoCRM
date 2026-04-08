@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, Text, text
+from sqlalchemy import CheckConstraint, DateTime, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -33,3 +33,10 @@ class User(Base):
     deals = relationship("Deal", back_populates="user", cascade="all, delete-orphan")
     activities = relationship("Activity", back_populates="user", cascade="all, delete-orphan")
     pipeline_stages = relationship("PipelineStage", back_populates="user", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        CheckConstraint(
+            "plan IN ('free','pro','enterprise')",
+            name="ck_users_plan"
+        ),
+    )

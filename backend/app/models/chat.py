@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -35,6 +35,13 @@ class ChatSession(Base):
     user = relationship("User", backref="chat_sessions")
     messages = relationship("ChatMessage", back_populates="session", order_by="ChatMessage.created_at")
 
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('active','archived','closed')",
+            name="ck_chat_sessions_status"
+        ),
+    )
+
 
 class ChatMessage(Base):
     """A single message in a chat session — from user or assistant."""
@@ -57,6 +64,13 @@ class ChatMessage(Base):
 
     # relationships
     session = relationship("ChatSession", back_populates="messages")
+
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('user','assistant')",
+            name="ck_chat_messages_role"
+        ),
+    )
 
 
 class ChatAction(Base):
@@ -81,3 +95,14 @@ class ChatAction(Base):
 
     # relationships
     session = relationship("ChatSession", backref="actions")
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending','confirmed','rejected','completed')",
+            name="ck_chat_actions_status"
+        ),
+        CheckConstraint(
+            "entity_type IN ('contact','deal','activity')",
+            name="ck_chat_actions_entity_type"
+        ),
+    )

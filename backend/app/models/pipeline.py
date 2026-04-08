@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, text
+from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -28,3 +28,7 @@ class PipelineStage(Base):
 
     # relationships
     user = relationship("User", back_populates="pipeline_stages")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", name="uq_pipeline_stages_user_name"),
+    )

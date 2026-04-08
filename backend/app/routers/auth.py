@@ -8,6 +8,7 @@ from app.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.schemas.user import UserCreate, UserRead, Token, LoginRequest
 from app.services.auth_service import hash_password, verify_password, create_access_token
+from app.services.seed_service import seed_default_pipeline_stages
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -26,6 +27,10 @@ async def register(body: UserCreate, db: AsyncSession = Depends(get_db)):
     db.add(user)
     await db.commit()
     await db.refresh(user)
+
+    # Seed default pipeline stages for the new user
+    await seed_default_pipeline_stages(db, user.id)
+
     return user
 
 

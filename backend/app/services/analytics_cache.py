@@ -11,7 +11,7 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session_factory
@@ -56,7 +56,7 @@ class AnalyticsCache:
 
     @staticmethod
     async def _query_stats(db: AsyncSession, user_id: str) -> dict:
-        """Execute the aggregate queries."""
+        """Execute the aggregate queries (optimized into fewer round-trips)."""
         uid = UUID(user_id)
 
         # Total contacts
@@ -66,27 +66,20 @@ class AnalyticsCache:
             )
         ).scalar() or 0
 
-        # Total deals + pipeline value
+        # Combine deals stats: total count, pipeline value, won deals
         deals_result = await db.execute(
             select(
-                func.count(),
-                func.coalesce(func.sum(Deal.value), 0),
+                func.count(Deal.id).label("total_deals"),
+                func.coalesce(func.sum(Deal.value), 0).label("pipeline_value"),
+                func.count(case((Deal.status == "won", 1), else_=None)).label("won_deals"),
             )
             .select_from(Deal)
             .where(Deal.user_id == uid)
         )
         deals_row = deals_result.one()
-        total_deals = deals_row[0] or 0
-        pipeline_value = float(deals_row[1] or 0)
-
-        # Won deals
-        won_deals = (
-            await db.execute(
-                select(func.count())
-                .select_from(Deal)
-                .where(Deal.user_id == uid, Deal.status == "won")
-            )
-        ).scalar() or 0
+        total_deals = deals_row.total_deals or 0
+        pipeline_value = float(deals_row.pipeline_value or 0)
+        won_deals = deals_row.won_deals or 0
 
         # Recent activities (last 7 days)
         week_ago = datetime.now(timezone.utc) - timedelta(days=7)

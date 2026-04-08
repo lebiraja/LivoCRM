@@ -1,7 +1,7 @@
 """Analytics router — KPI summaries, win-rate funnel, revenue forecast."""
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, select, case, cast, Float
+from sqlalchemy import case, cast, Float, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db, get_current_user
@@ -19,36 +19,32 @@ async def summary(
     user: User = Depends(get_current_user),
 ):
     """High-level KPIs: total contacts, deals, activities, pipeline value."""
+    # Query contacts count
     contacts_count = (await db.execute(
         select(func.count()).select_from(Contact).where(Contact.user_id == user.id)
     )).scalar() or 0
 
-    deals_count = (await db.execute(
-        select(func.count()).select_from(Deal).where(Deal.user_id == user.id)
-    )).scalar() or 0
-
+    # Query activities count
     activities_count = (await db.execute(
         select(func.count()).select_from(Activity).where(Activity.user_id == user.id)
     )).scalar() or 0
 
-    pipeline_value = (await db.execute(
-        select(func.coalesce(func.sum(Deal.value), 0)).where(
-            Deal.user_id == user.id, Deal.status == "active"
-        )
-    )).scalar()
-
-    won_value = (await db.execute(
-        select(func.coalesce(func.sum(Deal.value), 0)).where(
-            Deal.user_id == user.id, Deal.status == "won"
-        )
-    )).scalar()
+    # Combine deals queries into one: count + pipeline_value + won_value
+    deals_result = await db.execute(
+        select(
+            func.count(Deal.id).label("deals_count"),
+            func.coalesce(func.sum(case((Deal.status == "active", Deal.value), else_=0)), 0).label("pipeline_value"),
+            func.coalesce(func.sum(case((Deal.status == "won", Deal.value), else_=0)), 0).label("won_value"),
+        ).where(Deal.user_id == user.id)
+    )
+    deals_row = deals_result.one()
 
     return {
         "contacts": contacts_count,
-        "deals": deals_count,
+        "deals": deals_row.deals_count or 0,
         "activities": activities_count,
-        "pipeline_value": float(pipeline_value),
-        "won_value": float(won_value),
+        "pipeline_value": float(deals_row.pipeline_value),
+        "won_value": float(deals_row.won_value),
     }
 
 

@@ -25,6 +25,7 @@ from app.schemas.chat import (
     ChatSendResponse,
     ChatSessionDetail,
     ChatSessionRead,
+    ConfirmationPayload,
 )
 from app.services.ai_engine.orchestrator import Orchestrator, OrchestratorResponse, SessionState
 from app.services.session_manager import clear_context, get_context, reset_context, _save_context
@@ -156,7 +157,7 @@ async def delete_session(
 
     await db.delete(session)
     await db.commit()
-    clear_context(session_id)
+    await clear_context(session_id)
 
 
 # ── Send message ────────────────────────────────────────────────────────────
@@ -198,12 +199,12 @@ async def send_message(
 
     # 2. Run orchestrator (with typing indicator via WS)
     await push_ai_typing(session_id, is_typing=True)
-    ctx = get_context(session_id)
+    ctx = await get_context(session_id)
     orch_response: OrchestratorResponse = _orchestrator.process_message(ctx, body.message)
     await push_ai_typing(session_id, is_typing=False)
 
     # Persist context to Redis so it survives restarts
-    _save_context(session_id, ctx)
+    await _save_context(session_id, ctx)
 
     # 3. Save the AI message
     ai_msg = ChatMessage(
@@ -232,7 +233,7 @@ async def send_message(
             stats = await analytics_cache.invalidate(user.id)
             await push_dashboard_update(user.id, stats)
         # Transition to IDLE — preserve history + remember what was saved
-        reset_context(
+        await reset_context(
             session_id,
             last_saved_entity={
                 "type": _intent_to_entity(orch_response.intent),
@@ -264,6 +265,16 @@ async def send_message(
             )
         )
 
+    # Build confirmation payload if ready to save
+    confirmation = None
+    if orch_response.ready_to_save and orch_response.session_state == SessionState.SAVING:
+        confirmation = ConfirmationPayload(
+            intent=orch_response.intent,
+            entity_type=_intent_to_entity(orch_response.intent),
+            data=orch_response.extracted_data,
+            message=f"Ready to create {_intent_to_entity(orch_response.intent).lower()}. Please confirm:",
+        )
+
     return ChatSendResponse(
         session_id=session_id,
         user_message=ChatMessageRead.model_validate(user_msg),
@@ -273,6 +284,7 @@ async def send_message(
         extracted_data=orch_response.extracted_data,
         missing_fields=orch_response.missing_fields,
         ready_to_save=orch_response.ready_to_save,
+        confirmation=confirmation,
         session_title=session.title,
     )
 

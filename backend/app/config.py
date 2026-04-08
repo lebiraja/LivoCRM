@@ -7,10 +7,10 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     # ── Database ──
-    DATABASE_URL: str = "postgresql+asyncpg://livocrm_user:supersecretpassword@db:5432/livocrm"
+    DATABASE_URL: str = ""  # Must be provided via .env
 
     # ── Auth / JWT ──
-    SECRET_KEY: str = "your-secret-key-here"
+    SECRET_KEY: str = ""  # Must be provided via .env (minimum 32 chars)
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
@@ -28,3 +28,10 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Validate required settings at startup
+if not settings.SECRET_KEY or len(settings.SECRET_KEY) < 32:
+    raise ValueError("SECRET_KEY must be provided via .env and be at least 32 characters long")
+
+if not settings.DATABASE_URL:
+    raise ValueError("DATABASE_URL must be provided via .env")

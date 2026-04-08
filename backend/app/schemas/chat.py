@@ -44,6 +44,14 @@ class ChatSessionDetail(ChatSessionRead):
     messages: list[ChatMessageRead] = []
 
 
+class ConfirmationPayload(BaseModel):
+    """AI action awaiting user confirmation."""
+    intent: str
+    entity_type: str
+    data: dict
+    message: str = "Please confirm the following action:"
+
+
 class ChatSendResponse(BaseModel):
     """Response after processing a user message."""
     session_id: UUID
@@ -54,6 +62,7 @@ class ChatSendResponse(BaseModel):
     extracted_data: dict = {}
     missing_fields: list[str] = []
     ready_to_save: bool = False
+    confirmation: ConfirmationPayload | None = None
     session_title: str | None = None
 
 

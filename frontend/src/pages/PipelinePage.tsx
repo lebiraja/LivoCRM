@@ -61,8 +61,8 @@ export default function PipelinePage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await dealsApi.list();
-      setDeals(data);
+      const response = await dealsApi.list();
+      setDeals(response.items);
     } catch (err) {
       console.error("Failed to load deals:", err);
       setDeals([]);
