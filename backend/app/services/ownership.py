@@ -9,11 +9,13 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.appointment import Appointment
 from app.models.contact import Contact
 from app.models.deal import Deal
+from app.models.follow_up import FollowUpTask
 from app.models.user import User
 
-OwnedModel = TypeVar("OwnedModel", Contact, Deal)
+OwnedModel = TypeVar("OwnedModel", Contact, Deal, Appointment, FollowUpTask)
 
 
 async def require_owned(db: AsyncSession, model: type[OwnedModel], entity_id: UUID, user: User) -> OwnedModel:
