@@ -35,7 +35,9 @@ services:
 
   # ── FastAPI backend ──────────────────────────────────────────────────────
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      target: runtime
     env_file: .env
     depends_on:
       db:
@@ -87,6 +89,37 @@ services:
       - livocrm
     restart: unless-stopped
 
+  # ── Test profile: throwaway Postgres (tmpfs) + backend test image ────────
+  # docker compose --profile test run --rm --build backend-test pytest
+  db-test:
+    image: postgres:16-alpine
+    profiles: ["test"]
+    environment:
+      POSTGRES_DB: livocrm_test
+      # Throwaway tmpfs DB on an internal network with no published port
+      POSTGRES_HOST_AUTH_METHOD: trust
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d livocrm_test"]
+      interval: 2s
+      retries: 15
+    networks:
+      - livocrm-test
+
+  backend-test:
+    build:
+      context: ./backend
+      target: test
+    profiles: ["test"]
+    environment:
+      TEST_DATABASE_URL: postgresql+asyncpg://postgres@db-test:5432/livocrm_test
+    depends_on:
+      db-test:
+        condition: service_healthy
+    networks:
+      - livocrm-test
+
 volumes:
   pgdata:
   redisdata:
@@ -95,3 +128,5 @@ volumes:
 networks:
   livocrm:
     driver: bridge
+  livocrm-test:
+    internal: true

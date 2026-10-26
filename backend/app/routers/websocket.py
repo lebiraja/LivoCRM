@@ -7,8 +7,6 @@ Two WS endpoints:
 
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
 from collections import defaultdict
 from uuid import UUID

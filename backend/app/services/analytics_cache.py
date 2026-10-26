@@ -7,7 +7,6 @@ on-demand after entity mutations.
 
 from __future__ import annotations
 
-import asyncio
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 

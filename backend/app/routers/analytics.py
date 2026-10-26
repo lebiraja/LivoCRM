@@ -1,7 +1,7 @@
 """Analytics router — KPI summaries, win-rate funnel, revenue forecast."""
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import case, cast, Float, func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db, get_current_user

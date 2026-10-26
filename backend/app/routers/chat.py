@@ -19,7 +19,6 @@ from app.models.deal import Deal
 from app.models.activity import Activity
 from app.models.user import User
 from app.schemas.chat import (
-    ChatActionRead,
     ChatMessageRead,
     ChatMessageSend,
     ChatSendResponse,

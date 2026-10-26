@@ -7,8 +7,6 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-logger = logging.getLogger(__name__)
-
 from app.routers import (
     auth_router,
     contacts_router,
@@ -20,6 +18,8 @@ from app.routers import (
     pipeline_stages_router,
     ws_router,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
