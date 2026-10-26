@@ -72,15 +72,30 @@ export const recoveryRunSchema = z.object({
   created: z.number(),
 });
 
-export const aiHealthSchema = z.object({
-  keys: z.array(
-    z.object({
-      key_id: z.string(),
-      state: z.string(),
-      remaining_tokens: z.number().nullable(),
-    })
-  ),
+const keyModelSchema = z.object({
+  state: z.string(),
+  remaining_tokens: z.number().nullable(),
 });
+
+/** GET /ai/health: `{provider, keys: <count>, pool: [{key_id, models: {<model>: {...}}}]}`, flattened to one row per key. */
+export const aiHealthSchema = z
+  .object({
+    pool: z.array(z.object({ key_id: z.string(), models: z.record(z.string(), keyModelSchema) })),
+  })
+  .transform(({ pool }) => ({
+    keys: pool.map(({ key_id, models }) => {
+      const states = Object.values(models);
+      const worst = states.find((m) => m.state !== "ready") ?? states[0];
+      const tokens = states
+        .map((m) => m.remaining_tokens)
+        .filter((n): n is number => n !== null);
+      return {
+        key_id,
+        state: worst?.state ?? "ready",
+        remaining_tokens: tokens.length > 0 ? Math.min(...tokens) : null,
+      };
+    }),
+  }));
 
 export type FollowUpReason = z.infer<typeof followUpReasonSchema>;
 export type FollowUp = z.infer<typeof followUpSchema>;
