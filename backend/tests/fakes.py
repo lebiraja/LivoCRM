@@ -9,7 +9,7 @@ from botocore.exceptions import BotoCoreError
 
 
 class FakeLLMProvider:
-    """Stands in for the boto3 bedrock-runtime client behind `bedrock_service._get_client`.
+    """Stands in for the boto3 bedrock-runtime client installed as `bedrock_service._bedrock_client`.
 
     Replays scripted replies in order. With an empty script it raises like a
     failed Bedrock call, so callers take their deterministic fallbacks.

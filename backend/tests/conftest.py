@@ -18,13 +18,20 @@ import pytest  # noqa: E402
 from fakeredis import FakeAsyncRedis  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
 from sqlalchemy import text  # noqa: E402
-from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, async_sessionmaker, create_async_engine  # noqa: E402
+from sqlalchemy.ext.asyncio import (  # noqa: E402
+    AsyncConnection,
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.pool import NullPool  # noqa: E402
 
 from app import database  # noqa: E402
 from app.dependencies import get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models.user import User  # noqa: E402
+from app.routers import chat  # noqa: E402
 from app.services import bedrock_service, session_manager  # noqa: E402
 from app.services.auth_service import create_access_token, hash_password  # noqa: E402
 from tests.fakes import FakeLLMProvider  # noqa: E402
@@ -75,7 +82,7 @@ def fake_redis(monkeypatch: pytest.MonkeyPatch) -> FakeAsyncRedis:
 @pytest.fixture(autouse=True)
 def llm(monkeypatch: pytest.MonkeyPatch) -> FakeLLMProvider:
     fake = FakeLLMProvider()
-    monkeypatch.setattr(bedrock_service, "_get_client", lambda: fake)
+    monkeypatch.setattr(bedrock_service, "_bedrock_client", fake)
     return fake
 
 
@@ -84,7 +91,6 @@ def _side_sessions(monkeypatch: pytest.MonkeyPatch) -> None:
     """Background work that opens its own session gets a fresh pool-less engine per test."""
     engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
     factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    monkeypatch.setattr(database, "async_session", factory)
     monkeypatch.setattr(database, "async_session_factory", factory)
     monkeypatch.setattr("app.services.analytics_cache.async_session_factory", factory)
 
@@ -101,7 +107,42 @@ async def client(db_conn: AsyncConnection) -> AsyncIterator[AsyncClient]:
     app.dependency_overrides[get_db] = _get_db
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
+    await asyncio.gather(*chat._background_tasks)
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def live_engine() -> AsyncIterator[AsyncEngine]:
+    """Pooled engine whose writes really commit (concurrency tests); tables are truncated afterwards."""
+    engine = create_async_engine(TEST_DATABASE_URL, pool_size=5, max_overflow=0, pool_timeout=2)
+    yield engine
+    async with engine.begin() as conn:
+        await conn.execute(text("TRUNCATE users CASCADE"))
+    await engine.dispose()
+
+
+@pytest.fixture
+async def live_client(live_engine: AsyncEngine) -> AsyncIterator[AsyncClient]:
+    factory = async_sessionmaker(live_engine, class_=AsyncSession, expire_on_commit=False)
+
+    async def _get_db() -> AsyncIterator[AsyncSession]:
+        async with factory() as session:
+            yield session
+
+    app.dependency_overrides[get_db] = _get_db
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+    await asyncio.gather(*chat._background_tasks)
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def live_user(live_engine: AsyncEngine) -> User:
+    async with AsyncSession(live_engine, expire_on_commit=False) as session:
+        user = User(email=f"live-{secrets.token_hex(4)}@example.com", hashed_password=hash_password("x" * 12))
+        session.add(user)
+        await session.commit()
+    return user
 
 
 @pytest.fixture

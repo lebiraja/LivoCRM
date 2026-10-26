@@ -12,7 +12,7 @@ from app.models.contact import Contact
 from app.models.activity import Activity
 from app.models.deal import Deal
 from app.models.user import User
-from app.services.bedrock_service import get_insights
+from app.services.bedrock_service import get_insights, llm_slots
 from app.services.lead_scoring import score_contact
 
 router = APIRouter(prefix="/ai", tags=["AI"])
@@ -87,5 +87,6 @@ async def insights(
         "proposal_deals": int(proposal_deals),
     }
 
-    insights, generated_by = await asyncio.to_thread(get_insights, metrics)
+    async with llm_slots:
+        insights, generated_by = await asyncio.to_thread(get_insights, metrics)
     return {"insights": insights, "generated_by": generated_by}

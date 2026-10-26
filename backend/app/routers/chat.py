@@ -31,6 +31,7 @@ from app.services.session_manager import clear_context, get_context, reset_conte
 from app.services.session_naming import generate_session_title
 from app.routers.websocket import push_ai_typing, push_dashboard_update, push_entity_created
 from app.services.analytics_cache import analytics_cache
+from app.services.bedrock_service import llm_slots
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,9 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
 
 # Singleton orchestrator (stateless — all state lives in SessionContext)
 _orchestrator = Orchestrator()
+
+# Strong references so fire-and-forget tasks are not garbage-collected mid-run
+_background_tasks: set[asyncio.Task[None]] = set()
 
 
 # ── Session management ──────────────────────────────────────────────────────
@@ -171,9 +175,9 @@ async def send_message(
     """Send a message to the AI and get a response.
 
     This is the main chat endpoint.  It:
-      1. Saves the user message to the DB
-      2. Runs the orchestrator to get an AI response
-      3. Saves the AI message to the DB
+      1. Verifies the session, then releases the DB connection
+      2. Runs the orchestrator off the event loop (no connection held)
+      3. Saves both messages in one short transaction
       4. If ready_to_save and state is SAVING, creates the CRM entity
       5. Returns both messages + orchestrator state
     """
@@ -187,25 +191,28 @@ async def send_message(
     session = result.scalar_one_or_none()
     if not session:
         raise HTTPException(status_code=404, detail="Chat session not found")
+    # Return the connection to the pool before the slow LLM round-trips
+    await db.commit()
 
-    # 1. Save the user message
+    # 2. Run orchestrator in a worker thread (with typing indicator via WS)
+    await push_ai_typing(session_id, is_typing=True)
+    ctx = await get_context(session_id)
+    async with llm_slots:
+        orch_response: OrchestratorResponse = await asyncio.to_thread(
+            _orchestrator.process_message, ctx, body.message
+        )
+    await push_ai_typing(session_id, is_typing=False)
+
+    # Persist context to Redis so it survives restarts
+    await _save_context(session_id, ctx)
+
+    # 3. Save the user and AI messages
     user_msg = ChatMessage(
         session_id=session_id,
         role="user",
         content=body.message,
     )
     db.add(user_msg)
-
-    # 2. Run orchestrator (with typing indicator via WS)
-    await push_ai_typing(session_id, is_typing=True)
-    ctx = await get_context(session_id)
-    orch_response: OrchestratorResponse = _orchestrator.process_message(ctx, body.message)
-    await push_ai_typing(session_id, is_typing=False)
-
-    # Persist context to Redis so it survives restarts
-    await _save_context(session_id, ctx)
-
-    # 3. Save the AI message
     ai_msg = ChatMessage(
         session_id=session_id,
         role="assistant",
@@ -255,7 +262,7 @@ async def send_message(
 
     # Schedule background title generation (non-blocking, after commit)
     if is_first_exchange:
-        asyncio.create_task(
+        task = asyncio.create_task(
             _auto_name_session(
                 session_id=session_id,
                 user_id=user.id,
@@ -263,6 +270,8 @@ async def send_message(
                 ai_response=orch_response.ai_message,
             )
         )
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
 
     # Build confirmation payload if ready to save
     confirmation = None
@@ -351,9 +360,10 @@ async def _auto_name_session(
 
     try:
         # Run LLM call in a thread to avoid blocking the event loop
-        title = await asyncio.to_thread(
-            generate_session_title, user_message, ai_response
-        )
+        async with llm_slots:
+            title = await asyncio.to_thread(
+                generate_session_title, user_message, ai_response
+            )
 
         async with async_session_factory() as db:
             result = await db.execute(
