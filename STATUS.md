@@ -2,6 +2,12 @@
 
 Session log. Newest entry on top.
 
+## 2026-10-26 · v0.5.0-ui · Phases 2, 3 and 6 merged (lean scope)
+- **Phase 2 (v0.4.0-clinic):** migration 0010 (appointments, follow_up_tasks, outbound_messages), idempotent recovery engine, Groq draft copilot with EN/TA template fallback, summary with attributed recovered INR, seed CLI. 232 backend tests, 85% coverage. Scope cut: per-user ownership (no workspaces/roles), simulated channel only.
+- **Phase 3:** "Ledger" UI (paper/ink, deep-green accent, bottom nav on mobile, EN/TA toggle), Today, Appointments, Reports, Settings with AI key health; 31 frontend tests. Lead check on integration found two contract mismatches the agent had guessed wrong (appointments lacked `contact_name`; `/ai/health` shape); fixed with tests. Entry bundle 210 kB gzip (budget 180).
+- **Phase 6 (PR #22):** SAM template, ETL and score Lambdas, SageMaker training code, Caddy TLS prod override, EC2 runbook; 38 tests; workflow set to manual until AWS exists. Nothing deployed.
+- **Open:** deployment needs Lebi's AWS console steps (`cloud/deploy/README.md`); Tamil copy unreviewed by a native speaker; no 360 px browser check; Leads/lead-detail screens not built; docs (`architecture.md`, `docker.md`, `API.md`, `ai.md`, cloud report outline) and IA3 reports still to write (Phase 4); strict json_schema output and Bedrock removal deferred.
+
 ## 2026-10-26 · v0.3.0-groq · Phase 1 (lean): Groq provider with multi-key pool
 - **Done:** `app/services/llm/key_pool.py` (load balancing by remaining tokens, 429 cooldown and instant failover, 401 disable, secrets only as key ids) and `groq_client.py` (httpx, strict timeouts, 4 attempts max, no content in logs); `chat_completion` and insights dispatch on `LLM_PROVIDER` (default `groq`, Bedrock kept as legacy); `GET /api/ai/health` shows per-key state without secrets; `.env.example` documents `GROQ_API_KEYS` (1 to N keys). 23 new tests; full suite 161 passed, 82% coverage, ruff clean.
 - **Verified live:** both `openai/gpt-oss-20b` and `openai/gpt-oss-120b` answer on the account (8,000 TPM, 1,000 RPD); 6 live calls through the 3-key pool spread 2 per key.

@@ -23,17 +23,17 @@ Master checklist for the IA3 build. Tick items as they are verified, not when st
 - [x] `GROQ_API_KEYS` in `.env.example`
 
 ## 3. Features (IA3 and startup demo)
-- [ ] Top features from the ranked backlog built
-- [ ] Seeded demo data and simulation mode
-- [ ] Tamil/English toggle
+- [x] Core features built: appointments, recovery engine, drafts, recovered INR, seed demo
+- [x] Seeded demo data (`python -m app.cli seed-demo`, `POST /api/demo/seed`)
+- [x] Tamil/English toggle (draft Tamil, needs native review)
 
 ## 4. UI
-- [ ] Design system tokens and fonts (Tamil-safe)
+- [x] Design system tokens and fonts (Tamil-safe)
 - [ ] Every page redesigned, mobile first
 - [ ] Lighthouse and a11y targets met
 
 ## 5. Quality
-- [ ] pytest (auth and data mutations fully covered), vitest, Playwright smoke
+- [x] pytest 232 (85%), vitest 31; [ ] Playwright smoke not done
 - [ ] `docker compose up` clean from scratch, healthchecks green
 - [ ] Docs in `docs/` match the code (use `docs-keeper`)
 

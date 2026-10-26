@@ -51,6 +51,18 @@ async def test_create_appointment_returns_201(client: AsyncClient, tenants: dict
     assert body["fee_inr"] == "450.50"
     assert body["contact_id"] == tenants["a_contact"]
     assert body["user_id"] == str(tenants["a"].id)
+    assert body["contact_name"] == "A's patient"
+
+
+async def test_list_and_patch_include_contact_name(client: AsyncClient, tenants: dict[str, Any]) -> None:
+    listed = await client.get("/api/appointments", headers=auth_headers(tenants["b"]))
+    assert [row["contact_name"] for row in listed.json()] == ["B's patient"]
+
+    patched = await client.patch(
+        f"/api/appointments/{tenants['b_appt']}", json={"status": "completed"}, headers=auth_headers(tenants["b"])
+    )
+    assert patched.status_code == 200
+    assert patched.json()["contact_name"] == "B's patient"
 
 
 async def test_create_for_another_users_contact_is_404(client: AsyncClient, tenants: dict[str, Any]) -> None:
