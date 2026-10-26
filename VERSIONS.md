@@ -1,0 +1,13 @@
+# VERSIONS
+
+Version history for the IA3 build of LivoCRM. Newest on top. Bump the version and add a row for every tagged milestone.
+
+| Version | Date | Summary |
+|---|---|---|
+| v0.1.0-ia3-plan | 2026-10-26 | Cloned LivoCRM into `full-stack/`. Audit, security review, UI research, feature research and implementation plans written under `docs/plan/`. Tracking files created. No source code changed. |
+| v0.0.0-baseline | 2026-04-08 | Upstream LivoCRM at `c82bbcd` (FastAPI + React + Postgres + Redis, AWS Bedrock AI layer). Starting point for IA3. |
+
+## Versioning rules
+- `v0.x` while the plan and fixes land; `v1.0.0` is the IA3 submission build.
+- Each version: one row here, one `STATUS.md` entry, and a git tag when code changes.
+- Do not push to the upstream `origin` (`lebiraja/LivoCRM`) without deciding to; the DBMS submission was made from it.
