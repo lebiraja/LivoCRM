@@ -92,7 +92,7 @@ export default function ContactsPage() {
       const response = await contactsApi.list({ search, skip: (page - 1) * PAGE_SIZE, limit: PAGE_SIZE });
       setContacts(response.items);
       setTotalPages(Math.max(1, Math.ceil(response.total / PAGE_SIZE)));
-    } catch (err) {
+    } catch {
       toast.error("Failed to load contacts");
       setContacts([]);
       setTotalPages(1);
@@ -134,21 +134,19 @@ export default function ContactsPage() {
       setDialogOpen(false);
       loadContacts();
     } catch {
-      // In demo mode, just close
-      setDialogOpen(false);
+      toast.error("Failed to save contact");
     }
   };
 
   const handleDelete = async () => {
     try {
       await contactsApi.bulkDelete(Array.from(selected));
+      setSelected(new Set());
+      setDeleteDialogOpen(false);
+      loadContacts();
     } catch {
-      // Demo fallback — remove from local state
-      setContacts((prev) => prev.filter((c) => !selected.has(c.id)));
+      toast.error("Failed to delete contacts");
     }
-    setSelected(new Set());
-    setDeleteDialogOpen(false);
-    loadContacts();
   };
 
   const toggleSelect = (id: string) => {
@@ -185,9 +183,7 @@ export default function ContactsPage() {
       const res = await analyticsApi.getInsights();
       setAiSummary(res.insights[0] ?? "No insights available.");
     } catch {
-      setAiSummary(
-        "Sarah Johnson is a high-priority lead at Acme Corp (VP of Engineering). She's shown strong intent through 3 demo calls. Recommended action: schedule final pricing discussion."
-      );
+      toast.error("Failed to load AI insights");
     } finally {
       setAiLoading(false);
     }

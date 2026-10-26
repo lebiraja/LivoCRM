@@ -9,7 +9,7 @@ interface Props {
 
 const suggestions = [
   "Show recent contacts",
-  "Create a deal for $5,000",
+  "Create a deal for ₹50,000",
   "Score my leads",
   "Summarise today's activities",
 ];

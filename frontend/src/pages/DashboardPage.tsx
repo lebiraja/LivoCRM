@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import {
   Users,
   Handshake,
-  DollarSign,
+  IndianRupee,
   Activity,
   Sparkles,
 } from "lucide-react";
@@ -22,6 +22,7 @@ import {
   Bar,
   Cell,
 } from "recharts";
+import { toast } from "sonner";
 import { analyticsApi } from "@/api/analytics";
 import { activitiesApi } from "@/api/activities";
 import type {
@@ -31,6 +32,7 @@ import type {
   Activity as ActivityType,
   ActivityType as ActivityKind,
 } from "@/types";
+import { formatINR } from "@/lib/format";
 
 const container = {
   hidden: { opacity: 0 },
@@ -60,14 +62,12 @@ function StatCard({
   value,
   icon: Icon,
   color,
-  prefix = "",
   suffix = "",
 }: {
   title: string;
   value: number | string;
   icon: React.ElementType;
   color: string;
-  prefix?: string;
   suffix?: string;
 }) {
   return (
@@ -86,8 +86,7 @@ function StatCard({
                 {title}
               </p>
               <p className="text-2xl font-bold tracking-tight font-mono">
-                {prefix}
-                {typeof value === "number" ? value.toLocaleString() : value}
+                {typeof value === "number" ? value.toLocaleString("en-IN") : value}
                 {suffix}
               </p>
             </div>
@@ -103,15 +102,6 @@ function StatCard({
     </motion.div>
   );
 }
-
-function formatCurrency(n: number) {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
-  return `$${n}`;
-}
-
-
-
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
@@ -133,13 +123,8 @@ export default function DashboardPage() {
         setWinRate(wr);
         setForecast(f);
         setActivities(a.items.slice(0, 5));
-      } catch (err) {
-        console.error("Dashboard load failed:", err);
-        // Show real empty state instead of fake mock data
-        setSummary({ contacts: 0, deals: 0, activities: 0, pipeline_value: 0, won_value: 0 });
-        setWinRate({ stages: {}, win_rate: 0, won: 0, lost: 0 });
-        setForecast({ forecast: 0, breakdown: {} });
-        setActivities([]);
+      } catch {
+        toast.error("Failed to load dashboard");
       } finally {
         setLoading(false);
       }
@@ -215,8 +200,8 @@ export default function DashboardPage() {
         />
         <StatCard
           title="Pipeline Value"
-          value={formatCurrency(summary?.pipeline_value ?? 0)}
-          icon={DollarSign}
+          value={formatINR(summary?.pipeline_value ?? 0)}
+          icon={IndianRupee}
           color="#10B981"
         />
         <StatCard
@@ -252,24 +237,24 @@ export default function DashboardPage() {
                         <stop offset="100%" stopColor="#06B6D4" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                    <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis dataKey="month" stroke="var(--muted-foreground)" fontSize={12} tickLine={false} />
                     <YAxis
-                      stroke="hsl(var(--muted-foreground))"
+                      stroke="var(--muted-foreground)"
                       fontSize={12}
                       tickLine={false}
-                      tickFormatter={(v: number) => formatCurrency(v)}
+                      tickFormatter={(v: number) => formatINR(v, { compact: true })}
                     />
                     <Tooltip
                       contentStyle={{
-                        background: "hsl(var(--popover))",
-                        border: "1px solid hsl(var(--border))",
+                        background: "var(--popover)",
+                        border: "1px solid var(--border)",
                         borderRadius: "8px",
                         fontSize: "12px",
                       }}
-                      labelStyle={{ color: "hsl(var(--foreground))" }}
+                      labelStyle={{ color: "var(--foreground)" }}
                       formatter={(value: unknown) => [
-                        formatCurrency(Number(value)),
+                        formatINR(Number(value)),
                         undefined,
                       ]}
                     />
@@ -308,32 +293,32 @@ export default function DashboardPage() {
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={stageData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
                     <XAxis
                       type="number"
-                      stroke="hsl(var(--muted-foreground))"
+                      stroke="var(--muted-foreground)"
                       fontSize={12}
                       tickLine={false}
-                      tickFormatter={(v: number) => formatCurrency(v)}
+                      tickFormatter={(v: number) => formatINR(v, { compact: true })}
                     />
                     <YAxis
                       dataKey="stage_name"
                       type="category"
-                      stroke="hsl(var(--muted-foreground))"
+                      stroke="var(--muted-foreground)"
                       fontSize={11}
                       tickLine={false}
                       width={90}
                     />
                     <Tooltip
                       contentStyle={{
-                        background: "hsl(var(--popover))",
-                        border: "1px solid hsl(var(--border))",
+                        background: "var(--popover)",
+                        border: "1px solid var(--border)",
                         borderRadius: "8px",
                         fontSize: "12px",
                       }}
-                      labelStyle={{ color: "hsl(var(--foreground))" }}
+                      labelStyle={{ color: "var(--foreground)" }}
                       formatter={(value: unknown) => [
-                        formatCurrency(Number(value)),
+                        formatINR(Number(value)),
                         "Value",
                       ]}
                     />

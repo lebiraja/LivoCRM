@@ -27,7 +27,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="mesh-gradient relative flex min-h-screen items-center justify-center p-4">
+    <div className="relative flex min-h-screen bg-surface items-center justify-center p-4">
       {/* Floating orbs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-primary/5 blur-[120px]" />
@@ -38,7 +38,7 @@ export default function LoginPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="glass relative w-full max-w-md rounded-2xl p-8"
+        className="relative w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-sm"
       >
         {/* Header */}
         <div className="mb-8 text-center">

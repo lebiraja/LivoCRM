@@ -6,7 +6,6 @@ import {
   Palette,
   Shield,
   Mail,
-  Save,
   Moon,
   Sun,
 } from "lucide-react";
@@ -20,8 +19,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/stores/authStore";
 
 type Tab = "profile" | "notifications" | "appearance" | "security";
 
@@ -33,16 +32,9 @@ const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
 ];
 
 export default function SettingsPage() {
+  const user = useAuthStore((s) => s.user);
   const [activeTab, setActiveTab] = useState<Tab>("profile");
-  const [saved, setSaved] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("dark");
-  const [profile, setProfile] = useState({
-    first_name: "Lebi",
-    last_name: "Raja",
-    email: "lebi@livocrm.com",
-    company: "LivoCRM",
-    timezone: "America/New_York",
-  });
   const [notifications, setNotifications] = useState({
     email_deals: true,
     email_contacts: false,
@@ -50,11 +42,6 @@ export default function SettingsPage() {
     push_deals: true,
     push_tasks: true,
   });
-
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
 
   const toggleTheme = (t: "light" | "dark") => {
     setTheme(t);
@@ -109,100 +96,28 @@ export default function SettingsPage() {
                 <CardHeader>
                   <CardTitle className="text-base">Profile Information</CardTitle>
                   <CardDescription>
-                    Update your personal details
+                    Profile editing is not available yet
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">
-                      {profile.first_name[0]}
-                      {profile.last_name[0]}
-                    </div>
-                    <div>
-                      <p className="font-medium">
-                        {profile.first_name} {profile.last_name}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {profile.email}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>First name</Label>
-                      <Input
-                        value={profile.first_name}
-                        onChange={(e) =>
-                          setProfile((p) => ({
-                            ...p,
-                            first_name: e.target.value,
-                          }))
-                        }
-                        className="bg-muted/30"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Last name</Label>
-                      <Input
-                        value={profile.last_name}
-                        onChange={(e) =>
-                          setProfile((p) => ({
-                            ...p,
-                            last_name: e.target.value,
-                          }))
-                        }
-                        className="bg-muted/30"
-                      />
-                    </div>
-                  </div>
                   <div className="space-y-2">
-                    <Label>Email</Label>
+                    <Label htmlFor="profile-name">Full name</Label>
                     <Input
-                      value={profile.email}
-                      onChange={(e) =>
-                        setProfile((p) => ({ ...p, email: e.target.value }))
-                      }
+                      id="profile-name"
+                      value={user?.full_name ?? ""}
+                      readOnly
                       className="bg-muted/30"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Company</Label>
-                      <Input
-                        value={profile.company}
-                        onChange={(e) =>
-                          setProfile((p) => ({
-                            ...p,
-                            company: e.target.value,
-                          }))
-                        }
-                        className="bg-muted/30"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Timezone</Label>
-                      <select
-                        value={profile.timezone}
-                        onChange={(e) =>
-                          setProfile((p) => ({
-                            ...p,
-                            timezone: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                      >
-                        <option value="America/New_York">Eastern Time</option>
-                        <option value="America/Chicago">Central Time</option>
-                        <option value="America/Denver">Mountain Time</option>
-                        <option value="America/Los_Angeles">Pacific Time</option>
-                        <option value="UTC">UTC</option>
-                      </select>
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="profile-email">Email</Label>
+                    <Input
+                      id="profile-email"
+                      value={user?.email ?? ""}
+                      readOnly
+                      className="bg-muted/30"
+                    />
                   </div>
-                  <Button onClick={handleSave}>
-                    <Save className="mr-2 h-4 w-4" />
-                    {saved ? "Saved!" : "Save Changes"}
-                  </Button>
                 </CardContent>
               </Card>
             </motion.div>
@@ -220,7 +135,7 @@ export default function SettingsPage() {
                     Notification Preferences
                   </CardTitle>
                   <CardDescription>
-                    Choose how you want to be notified
+                    Notifications are not available yet
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -254,6 +169,7 @@ export default function SettingsPage() {
                                 [key]: !n[key],
                               }))
                             }
+                            disabled
                             className="h-4 w-4 accent-primary"
                           />
                         </label>
@@ -289,16 +205,13 @@ export default function SettingsPage() {
                                 [key]: !n[key],
                               }))
                             }
+                            disabled
                             className="h-4 w-4 accent-primary"
                           />
                         </label>
                       ))}
                     </div>
                   </div>
-                  <Button onClick={handleSave}>
-                    <Save className="mr-2 h-4 w-4" />
-                    {saved ? "Saved!" : "Save Preferences"}
-                  </Button>
                 </CardContent>
               </Card>
             </motion.div>
@@ -379,53 +292,29 @@ export default function SettingsPage() {
                 <CardHeader>
                   <CardTitle className="text-base">Change Password</CardTitle>
                   <CardDescription>
-                    Update your password regularly
+                    Password change is not available yet
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label>Current Password</Label>
-                    <Input type="password" className="bg-muted/30" />
+                    <Input type="password" disabled className="bg-muted/30" />
                   </div>
                   <div className="space-y-2">
                     <Label>New Password</Label>
-                    <Input type="password" className="bg-muted/30" />
+                    <Input type="password" disabled className="bg-muted/30" />
                   </div>
                   <div className="space-y-2">
                     <Label>Confirm New Password</Label>
-                    <Input type="password" className="bg-muted/30" />
+                    <Input type="password" disabled className="bg-muted/30" />
                   </div>
-                  <Button onClick={handleSave}>
+                  <Button disabled>
                     <Shield className="mr-2 h-4 w-4" />
                     Update Password
                   </Button>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Active Sessions</CardTitle>
-                  <CardDescription>
-                    Manage your active sessions
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
-                    <div>
-                      <p className="text-sm font-medium">Current Session</p>
-                      <p className="text-xs text-muted-foreground">
-                        Linux · Chrome · New York, US
-                      </p>
-                    </div>
-                    <Badge className="bg-emerald/10 text-emerald">
-                      Active
-                    </Badge>
-                  </div>
-                  <Button variant="outline" size="sm" className="w-full">
-                    Sign out all other sessions
-                  </Button>
-                </CardContent>
-              </Card>
             </motion.div>
           )}
         </div>
