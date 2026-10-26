@@ -2,6 +2,11 @@
 
 Session log. Newest entry on top.
 
+## 2026-10-26 · v0.6.0-docs · Phase 4 docs
+- **Done:** `docs/architecture.md`, `docker.md`, `API.md`, `ai.md`, `security.md`, `testing.md`, refreshed `README.md`, both IA3 report outlines (`docs/ia3-fullstack-report-outline.md`, `docs/cloud/report-outline.md`, skeletons with `TO FILL` markers, no invented results). Stale pre-IA3 docs moved to `docs/archive/`.
+- **Caveat:** docs were written by a Haiku agent from code; test counts and coverage are copied from STATUS, not re-run in that pass. Re-verify before submission.
+- **Open:** final frontend build on main not re-run (network dropped); AWS deployment pending (issue #19); case study, deadlines, cloud certificate course still unknown; reports to write.
+
 ## 2026-10-26 · v0.5.0-ui · Phases 2, 3 and 6 merged (lean scope)
 - **Phase 2 (v0.4.0-clinic):** migration 0010 (appointments, follow_up_tasks, outbound_messages), idempotent recovery engine, Groq draft copilot with EN/TA template fallback, summary with attributed recovered INR, seed CLI. 232 backend tests, 85% coverage. Scope cut: per-user ownership (no workspaces/roles), simulated channel only.
 - **Phase 3:** "Ledger" UI (paper/ink, deep-green accent, bottom nav on mobile, EN/TA toggle), Today, Appointments, Reports, Settings with AI key health; 31 frontend tests. Lead check on integration found two contract mismatches the agent had guessed wrong (appointments lacked `contact_name`; `/ai/health` shape); fixed with tests. Entry bundle 210 kB gzip (budget 180).
