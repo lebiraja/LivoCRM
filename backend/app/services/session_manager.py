@@ -43,7 +43,7 @@ def _serialize(ctx: SessionContext) -> str:
     })
 
 
-def _deserialize(data: str) -> SessionContext:
+def _deserialize(data: str | bytes) -> SessionContext:
     """Deserialize JSON from Redis back into a SessionContext."""
     from app.services.ai_engine.intent_classifier import Intent
     obj = json.loads(data)
