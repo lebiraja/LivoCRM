@@ -81,6 +81,8 @@ def fake_redis(monkeypatch: pytest.MonkeyPatch) -> FakeAsyncRedis:
 def llm(monkeypatch: pytest.MonkeyPatch) -> FakeLLMProvider:
     fake = FakeLLMProvider()
     monkeypatch.setattr(bedrock_service, "_bedrock_client", fake)
+    # Existing tests drive the legacy Bedrock seam; Groq has its own suite (test_groq.py)
+    monkeypatch.setattr(bedrock_service.settings, "LLM_PROVIDER", "bedrock")
     return fake
 
 

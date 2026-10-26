@@ -74,6 +74,11 @@ def chat_completion(
     Raises:
         BedrockServiceError: If the API call fails or returns empty text.
     """
+    if settings.LLM_PROVIDER == "groq":
+        from app.services.llm.groq_client import groq_chat
+
+        return groq_chat(system_prompt, messages, max_tokens=max_tokens, temperature=temperature, model=model_id)
+
     if not settings.BEDROCK_ENABLED:
         raise BedrockServiceError("Bedrock is disabled by configuration")
 
@@ -139,6 +144,17 @@ def _extract_lines(text: str) -> list[str]:
 
 
 def generate_bedrock_insights(metrics: dict[str, Any]) -> list[str]:
+    if settings.LLM_PROVIDER == "groq":
+        text = chat_completion(
+            "You are a concise CRM analyst.",
+            [{"role": "user", "content": _build_prompt(metrics)}],
+            model_id=settings.GROQ_MODEL_SMART,
+        )
+        lines = _extract_lines(text)
+        if not lines:
+            raise BedrockServiceError("LLM response did not contain usable text")
+        return lines
+
     if not settings.BEDROCK_ENABLED:
         raise BedrockServiceError("Bedrock is disabled by configuration")
 

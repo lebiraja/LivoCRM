@@ -24,7 +24,19 @@ class Settings(BaseSettings):
     ENABLE_DOCS: bool = False
     LOG_LEVEL: str = "INFO"
 
-    # ── AWS (for AI features) ──
+    # ── LLM provider ──
+    # "groq" (default) or "bedrock" (legacy, needs AWS credentials)
+    LLM_PROVIDER: str = "groq"
+    # One key, or several comma-separated keys that are load-balanced (see services/llm/key_pool.py).
+    GROQ_API_KEYS: str = ""
+    GROQ_API_KEY: str = ""
+    GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
+    GROQ_MODEL_FAST: str = "openai/gpt-oss-20b"
+    GROQ_MODEL_SMART: str = "openai/gpt-oss-120b"
+    LLM_TIMEOUT_S: float = 15.0
+    LLM_TEMPERATURE: float = 0.2
+
+    # ── AWS (legacy Bedrock provider) ──
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
     AWS_DEFAULT_REGION: str = "us-east-1"

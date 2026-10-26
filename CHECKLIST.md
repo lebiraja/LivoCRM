@@ -17,10 +17,10 @@ Master checklist for the IA3 build. Tick items as they are verified, not when st
 - [x] No secrets in repo or history; `.env.example` complete (gitleaks clean)
 
 ## 2. Groq migration
-- [ ] Provider interface in place, Bedrock path removed or optional
-- [ ] Groq models chosen per task (see `docs/plan/08-feature-research.md`)
-- [ ] Structured outputs, timeouts, retries, fallback
-- [ ] `GROQ_API_KEY` in `.env.example` and docs
+- [x] Provider dispatch in place, Bedrock kept as optional legacy
+- [x] Groq models chosen and verified live (gpt-oss-20b fast, gpt-oss-120b smart)
+- [x] Timeouts, retries, key failover, deterministic fallback (strict json_schema deferred)
+- [x] `GROQ_API_KEYS` in `.env.example`
 
 ## 3. Features (IA3 and startup demo)
 - [ ] Top features from the ranked backlog built

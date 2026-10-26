@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.dependencies import get_db, get_current_user
 from app.models.contact import Contact
 from app.models.activity import Activity
@@ -18,6 +19,18 @@ from app.services.lead_scoring import score_contact
 from app.services.rate_limit import rate_limit, user_key
 
 router = APIRouter(prefix="/ai", tags=["AI"])
+
+
+@router.get("/health")
+async def ai_health(user: User = Depends(get_current_user)):
+    """Key-pool state per key id and model (no secrets)."""
+    from app.services.llm.groq_client import get_pool
+
+    return {
+        "provider": settings.LLM_PROVIDER,
+        "keys": len(get_pool()),
+        "pool": get_pool().snapshot(),
+    }
 
 
 @router.get("/score/{contact_id}")
