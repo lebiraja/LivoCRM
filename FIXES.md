@@ -14,6 +14,55 @@ _Findings come from `docs/plan/01-code-audit.md` and `docs/plan/02-security-revi
 - **Finding ref:** ID from docs/plan/
 ```
 
+## 2026-10-26 · LIKE wildcards in contact search were not escaped
+- **Symptom:** searching `%` or `_` matched every contact.
+- **Root cause:** `ilike(f"%{search}%")` passed user text as a pattern.
+- **Fix:** `Contact.name.icontains(search, autoescape=True)` (`backend/app/routers/contacts.py:29,34`). The chat lookups that used `ilike` were replaced by exact matches in the SEC-05 fix.
+- **Verification:** `tests/test_hardening.py::test_contact_search_escapes_wildcards[%|_|clinic]`.
+- **Finding ref:** SEC-25
+
+## 2026-10-26 · OpenAPI docs open by default; insights leaked the internal model id
+- **Symptom:** Swagger and `openapi.json` were served to anyone; `/api/ai/insights` returned `generated_by: "bedrock:<model id>"`.
+- **Root cause:** FastAPI defaults; `get_insights` built the label from `BEDROCK_LLM_MODEL`.
+- **Fix:** docs and schema only when `ENABLE_DOCS=true`, at `/api/docs` and `/api/openapi.json` (`backend/app/main.py:43`, `config.py:24`); `generated_by` is `"ai"` or `"fallback"` (`backend/app/services/bedrock_service.py:189,192`).
+- **Verification:** `test_api_docs_disabled_by_default[5 paths]`, `test_generated_by_hides_model_id`; live stack: `/api/docs` and `/api/openapi.json` 404.
+- **Finding ref:** SEC-26
+
+## 2026-10-26 · Redis without a password or memory cap
+- **Symptom:** any container on the network could read chat context, locks and tickets; memory unbounded.
+- **Root cause:** `redis-server` started with no `requirepass`/`maxmemory`.
+- **Fix:** `--requirepass "$REDIS_PASSWORD" --maxmemory "$REDIS_MAXMEMORY" --maxmemory-policy allkeys-lru`, healthcheck authenticates via `REDISCLI_AUTH` (`docker-compose.yml:26-38`); `REDIS_URL` carries the password (`.env.example:10-13`).
+- **Verification:** live stack: unauthenticated `redis-cli ping` -> `NOAUTH Authentication required`; `maxmemory-policy allkeys-lru`; backend healthy and rate limits working through Redis.
+- **Finding ref:** SEC-28
+
+## 2026-10-26 · CORS origins hard-coded, all methods and headers allowed
+- **Symptom:** origins fixed to localhost in code; `allow_methods=["*"]`, `allow_headers=["*"]`.
+- **Root cause:** dev defaults in `main.py`.
+- **Fix:** `CORS_ORIGINS` (comma-separated) from env (`backend/app/config.py:22,37`); methods limited to GET/POST/PATCH/DELETE/OPTIONS and headers to Authorization/Content-Type (`backend/app/main.py:51-54`).
+- **Verification:** `test_cors_origins_from_env`, `test_cors_preflight[allowed|evil origin]`.
+- **Finding ref:** SEC-23
+
+## 2026-10-26 · Edge hardening: no CSP or security headers, server version exposed
+- **Symptom:** API and WS responses carried no security headers; frontend asset responses lost theirs; nginx advertised its version; no TLS-independent clickjacking protection on `/api`.
+- **Root cause:** headers only in the frontend container's config (and dropped in its asset `location`); `server_tokens` on.
+- **Fix:** at the edge: `server_tokens off`, CSP (`default-src 'self'`, `img-src 'self' data:`, `font-src 'self'`, `frame-ancestors 'none'`, styles allow inline for UI libraries), `X-Content-Type-Options`, `X-Frame-Options DENY`, `Referrer-Policy`, `Permissions-Policy`, all `always` (`nginx/nginx.conf:16,53-58`); frontend copies hidden to avoid duplicates (`:130`); `/healthz` for the container check; edge 429s answer JSON with `Retry-After: 60`. Body limit 1m was SEC-14. HSTS waits for TLS (Phase 6).
+- **Verification:** live stack: `curl -I http://localhost:3500/` shows all five headers and `Server: nginx` without version; 120 parallel `/api/health` calls -> 77 x 429 with `Retry-After: 60`.
+- **Finding ref:** SEC-18
+
+## 2026-10-26 · Containers ran as root, could bake local .env, and had no readiness gating
+- **Symptom:** backend ran as root; `COPY . .` with no `.dockerignore`; `db` received the whole `.env` (SECRET_KEY, AWS keys); only db/redis had healthchecks and nginx started before its upstreams were ready.
+- **Root cause:** default Dockerfile and compose wiring.
+- **Fix:** `backend/.dockerignore` (env files, caches, generated model data); runtime image runs as uid 10001 with code and `ml/model.pkl` root-owned and read-only to it (`backend/Dockerfile:9,39`, also SEC-24); `db` has no `env_file` (`docker-compose.yml:6`); healthchecks on backend (`/api/health`), frontend, nginx (`/healthz`) and authenticated redis; backend waits for healthy db/redis, nginx for healthy frontend/backend; `restart: unless-stopped` on backend/frontend. `scripts/check_compose_policy.py` now also fails on a missing healthcheck or a db `env_file`.
+- **Verification:** `docker compose up -d --build`: all five services `(healthy)`; backend `id` -> `uid=10001(app)`; `/app/.env` absent in the image; `db` env has no `SECRET_KEY`; policy script ok.
+- **Finding ref:** SEC-17, SEC-24
+
+## 2026-10-26 · PII and raw model output in logs
+- **Symptom:** the extractor logged the full raw LLM reply (names, phones, emails), the classifier logged `raw[:200]`, titles derived from user text were logged, SQL errors embed row values, and uvicorn printed full query strings (a WS `?token=` JWT or a contact search term).
+- **Root cause:** debug-style logging, no logging config (CA-26) and no redaction.
+- **Fix:** log type names and lengths only (`services/ai_engine/data_extractor.py`, `intent_classifier.py`, `session_naming.py`, `bedrock_service.py`, `routers/chat.py` title log); `backend/app/logging_config.py` installs one root handler whose formatter masks emails, phone numbers and every URL query string, and routes uvicorn's loggers through it (called in `main.py:26`); engine `hide_parameters=True` (`backend/app/database.py:17`).
+- **Verification:** `test_no_pii_in_logs` (caplog), `test_redacting_formatter_masks_email_and_phone`, `test_query_strings_redacted[3]`, `test_uvicorn_logs_use_redacting_handler`; live stack: 0 backend log lines with a ticket/token value after WS connects with `?ticket=` and `?token=`.
+- **Finding ref:** SEC-13, CA-26
+
 ## 2026-10-26 · Chat context kept in an unbounded per-process dict and not bound to its owner
 - **Symptom:** after a restart (or on another worker) `reset_context` rebuilt history from process memory and lost it; the in-memory dict grew forever; Redis keys `livocrm:session:<session>` carried no user binding.
 - **Root cause:** dual store (Redis plus `_context_store` fallback) with reads preferring the process copy.

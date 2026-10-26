@@ -13,6 +13,8 @@ engine = create_async_engine(
     pool_recycle=1800,
     pool_size=10,
     max_overflow=20,
+    # Keep row values (names, phones) out of exception text and logs
+    hide_parameters=True,
 )
 
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)

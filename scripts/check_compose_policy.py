@@ -2,6 +2,7 @@
 
 Asserts:
   - only nginx publishes a port by default; db never does
+  - every default service has a healthcheck; db gets no env_file
   - dev-profile ports bind to 127.0.0.1
   - password/secret-like environment values are ${VAR} references, never literals
   - every image tag is explicit and not `latest`
@@ -40,6 +41,10 @@ def violations() -> list[str]:
     for name, svc in default.items():
         if svc.get("ports") and name != "nginx":
             errors.append(f"{name}: publishes a host port in the default profile")
+        if "healthcheck" not in svc:
+            errors.append(f"{name}: has no healthcheck")
+    if "env_file" in default["db"]:
+        errors.append("db: env_file would hand every app secret to the database container")
 
     dev = compose_config("dev")["services"]
     for name, svc in dev.items():

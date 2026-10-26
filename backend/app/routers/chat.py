@@ -413,7 +413,7 @@ async def _auto_name_session(
                 session.title = title
                 session.updated_at = datetime.utcnow()
                 await db.commit()
-                logger.info("Auto-named session %s → %r", session_id, title)
+                logger.info("Auto-named session %s", session_id)
     except Exception:
         logger.exception("Background session naming failed for %s", session_id)
 

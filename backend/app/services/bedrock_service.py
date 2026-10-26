@@ -186,7 +186,7 @@ def generate_fallback_insights(metrics: dict[str, Any]) -> list[str]:
 def get_insights(metrics: dict[str, Any]) -> tuple[list[str], str]:
     try:
         insights = generate_bedrock_insights(metrics)
-        return insights, f"bedrock:{settings.BEDROCK_LLM_MODEL}"
+        return insights, "ai"
     except BedrockServiceError as exc:
-        logger.warning("Bedrock insights failed, using fallback: %s", exc)
-        return generate_fallback_insights(metrics), "fallback:deterministic"
+        logger.warning("Bedrock insights failed, using fallback: %s", type(exc).__name__)
+        return generate_fallback_insights(metrics), "fallback"

@@ -8,6 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import DataError, IntegrityError
 
+from app.config import settings
+from app.logging_config import configure_logging
 from app.routers import (
     auth_router,
     contacts_router,
@@ -21,6 +23,7 @@ from app.routers import (
     ws_ticket_router,
 )
 
+configure_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -36,20 +39,19 @@ app = FastAPI(
     title="LivoCRM API",
     version="1.0.0",
     lifespan=lifespan,
+    # Interactive docs only on request (ENABLE_DOCS), under /api so nginx routes them
+    docs_url="/api/docs" if settings.ENABLE_DOCS else None,
+    redoc_url=None,
+    openapi_url="/api/openapi.json" if settings.ENABLE_DOCS else None,
 )
 
 # ── CORS ────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://localhost:3500",
-        "http://localhost",
-    ],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # ── Database error mapping (no SQL or values in responses) ──────────────────

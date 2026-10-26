@@ -58,10 +58,9 @@ def generate_session_title(
         )
         title = _normalize_title(raw_title)
         if title:
-            logger.info("Auto-named session: %r", title)
             return title
     except BedrockServiceError as exc:
-        logger.warning("LLM title generation failed: %s", exc)
+        logger.warning("LLM title generation failed: %s", type(exc).__name__)
 
     # Fallback: first 4 words of user message
     return _fallback_title(user_message)
