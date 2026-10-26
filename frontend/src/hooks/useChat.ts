@@ -21,11 +21,11 @@ export function useChat() {
     setActiveSessionId,
     setMessages,
     addMessage,
-    updateLastAiMessage,
     updateSessionTitle,
     setPendingConfirmation,
     setLoading,
     setStreaming,
+    setWsStatus,
   } = useChatStore();
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -35,35 +35,11 @@ export function useChat() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  /* ---- WebSocket message handler ---- */
-  const handleWsMessage = useCallback(
-    (data: Record<string, unknown>) => {
-      const type = data.type as string;
-
-      if (type === "ai_chunk") {
-        updateLastAiMessage((data.content as string) ?? "");
-      } else if (type === "ai_message") {
-        setStreaming(false);
-        const msg = data.message as ChatMessage;
-        addMessage(msg);
-      } else if (type === "ai_stream_start") {
-        setStreaming(true);
-        // Create an empty placeholder AI message
-        addMessage({
-          id: `temp-${Date.now()}`,
-          session_id: activeSessionId || "",
-          role: "assistant",
-          content: "",
-          created_at: new Date().toISOString(),
-        });
-      }
-    },
-    [activeSessionId, addMessage, updateLastAiMessage, setStreaming]
-  );
-
-  const { send } = useWebSocket({
-    sessionId: activeSessionId,
-    onMessage: handleWsMessage,
+  // WS only reports connection status here; replies arrive over REST
+  useWebSocket({
+    channel: "chat",
+    id: activeSessionId,
+    onStatus: setWsStatus,
   });
 
   /* ---- Public actions ---- */
@@ -183,7 +159,7 @@ export function useChat() {
         setStreaming(false);
       }
     },
-    [activeSessionId, sessions, wsStatus, send, addMessage, setStreaming, updateSessionTitle, setSessions, setPendingConfirmation]
+    [activeSessionId, sessions, addMessage, setStreaming, updateSessionTitle, setSessions, setPendingConfirmation]
   );
 
   return {
