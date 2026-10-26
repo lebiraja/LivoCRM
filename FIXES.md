@@ -14,6 +14,20 @@ _Findings come from `docs/plan/01-code-audit.md` and `docs/plan/02-security-revi
 - **Finding ref:** ID from docs/plan/
 ```
 
+## 2026-10-26 · Extractor system prompt showed the model literal double braces
+- **Symptom:** the model was told to answer `{{"extracted": {{...}}}}`, an invalid JSON example.
+- **Root cause:** `DATA_EXTRACTOR_SYSTEM` was written as if `.format()`-ed but never is.
+- **Fix:** single braces (`backend/app/services/ai_engine/prompts.py:78`).
+- **Verification:** `tests/test_quick_wins.py::test_extractor_prompt_has_single_braces`.
+- **Finding ref:** CA-27
+
+## 2026-10-26 · Lead score ignored activity recency
+- **Symptom:** every contact was scored as if its last activity was 30 days ago.
+- **Root cause:** `/api/ai/score/{id}` never passed `days_since_last_activity`, so feature engineering used its default; the activity count was also not filtered by owner.
+- **Fix:** one query for count and `max(occurred_at)` scoped to the user; recency in whole days passed to the model when any activity exists (`backend/app/routers/ai.py:37-52`).
+- **Verification:** `tests/test_quick_wins.py::test_lead_score_uses_days_since_last_activity` (activities 40 and 10 days ago -> count 2, recency 10).
+- **Finding ref:** CA-12
+
 ## 2026-10-26 · LIKE wildcards in contact search were not escaped
 - **Symptom:** searching `%` or `_` matched every contact.
 - **Root cause:** `ilike(f"%{search}%")` passed user text as a pattern.
