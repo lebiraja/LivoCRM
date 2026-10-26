@@ -2,7 +2,7 @@
 services:
   # ── PostgreSQL ───────────────────────────────────────────────────────────
   db:
-    image: postgres:16-alpine
+    image: postgres:16.15-alpine
     env_file: .env
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -10,8 +10,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5435:5432"   # host 5435 — free (5432/5433 taken by other projects)
+    # NOT exposed to host — use the dev-profile pgAdmin (see docs/pgadmin_setup.md)
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -21,7 +20,7 @@ services:
 
   # ── Redis (session cache + future pub/sub) ───────────────────────────────
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.11-alpine
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     volumes:
       - redisdata:/data
@@ -71,15 +70,17 @@ services:
       - livocrm
     restart: unless-stopped
 
-  # ── pgAdmin 4 (database GUI) ──────────────────────────────────────────────
+  # ── pgAdmin 4 (database GUI, dev only) ───────────────────────────────────
+  # docker compose --profile dev up -d pgadmin
   pgadmin:
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:9.18
+    profiles: ["dev"]
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@livocrm.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
       PGADMIN_LISTEN_PORT: 80
     ports:
-      - "5050:80"        # http://localhost:5050
+      - "127.0.0.1:5050:80"   # http://127.0.0.1:5050 — this machine only
     depends_on:
       db:
         condition: service_healthy
@@ -92,7 +93,7 @@ services:
   # ── Test profile: throwaway Postgres (tmpfs) + backend test image ────────
   # docker compose --profile test run --rm --build backend-test pytest
   db-test:
-    image: postgres:16-alpine
+    image: postgres:16.15-alpine
     profiles: ["test"]
     environment:
       POSTGRES_DB: livocrm_test
