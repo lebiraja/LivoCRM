@@ -12,7 +12,7 @@ interface Props {
 
 export function ChatSessionList({ sessions, activeId, onSelect, onNew }: Props) {
   return (
-    <aside className="flex h-full w-64 flex-col border-r border-border bg-muted/30">
+    <aside className="flex max-h-44 w-full shrink-0 flex-col border-b border-border md:h-full md:max-h-none md:w-64 md:border-r md:border-b-0">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold text-foreground">Conversations</h2>

@@ -8,17 +8,12 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  LayoutDashboard,
-  Users,
-  Kanban,
-  BarChart3,
-  Settings,
-  Plus,
-} from "lucide-react";
+import { navItems } from "@/components/layout/navItems";
+import { useT } from "@/i18n";
 import { useUIStore } from "@/stores/uiStore";
 
 export function CommandMenu() {
+  const t = useT();
   const { commandOpen, setCommandOpen } = useUIStore();
   const navigate = useNavigate();
 
@@ -44,40 +39,16 @@ export function CommandMenu() {
 
   return (
     <CommandDialog open={commandOpen} onOpenChange={setCommandOpen}>
-      <CommandInput placeholder="Type a command or search…" />
+      <CommandInput placeholder={t("common.search")} />
       <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
-        <CommandGroup heading="Navigation">
-          <CommandItem onSelect={() => go("/")}>
-            <LayoutDashboard className="mr-2 h-4 w-4" />
-            Dashboard
-          </CommandItem>
-          <CommandItem onSelect={() => go("/contacts")}>
-            <Users className="mr-2 h-4 w-4" />
-            Contacts
-          </CommandItem>
-          <CommandItem onSelect={() => go("/pipeline")}>
-            <Kanban className="mr-2 h-4 w-4" />
-            Pipeline
-          </CommandItem>
-          <CommandItem onSelect={() => go("/analytics")}>
-            <BarChart3 className="mr-2 h-4 w-4" />
-            Analytics
-          </CommandItem>
-          <CommandItem onSelect={() => go("/settings")}>
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
-          </CommandItem>
-        </CommandGroup>
-        <CommandGroup heading="Quick Actions">
-          <CommandItem onSelect={() => go("/contacts?action=new")}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Contact
-          </CommandItem>
-          <CommandItem onSelect={() => go("/pipeline?action=new")}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Deal
-          </CommandItem>
+        <CommandEmpty>{t("common.noResults")}</CommandEmpty>
+        <CommandGroup heading={t("nav.primary")}>
+          {navItems.map((item) => (
+            <CommandItem key={item.to} onSelect={() => go(item.to)}>
+              <item.icon className="mr-2 h-4 w-4" />
+              {t(item.labelKey)}
+            </CommandItem>
+          ))}
         </CommandGroup>
       </CommandList>
     </CommandDialog>
