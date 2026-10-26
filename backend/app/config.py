@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     ENABLE_DOCS: bool = False
     LOG_LEVEL: str = "INFO"
 
+    # ── Recovery engine ──
+    # In-process loop that generates follow-up tasks every 60 s (off by default; tests never enable it)
+    ENABLE_SCHEDULER: bool = False
+
     # ── AWS (for AI features) ──
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""

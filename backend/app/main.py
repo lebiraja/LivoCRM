@@ -1,6 +1,7 @@
 """LivoCRM — FastAPI entry point."""
 
 from contextlib import asynccontextmanager
+import asyncio
 import logging
 
 from fastapi import FastAPI, Request
@@ -21,7 +22,12 @@ from app.routers import (
     pipeline_stages_router,
     ws_router,
     ws_ticket_router,
+    appointments_router,
+    follow_ups_router,
+    recovery_router,
+    demo_router,
 )
+from app.services.recovery import run_scheduler
 
 configure_logging()
 logger = logging.getLogger(__name__)
@@ -31,8 +37,11 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # startup: import models so Alembic sees them
     import app.models  # noqa: F401
+    scheduler = asyncio.create_task(run_scheduler()) if settings.ENABLE_SCHEDULER else None
     yield
     # shutdown
+    if scheduler is not None:
+        scheduler.cancel()
 
 
 app = FastAPI(
@@ -89,6 +98,10 @@ app.include_router(analytics_router, prefix=API)
 app.include_router(ai_router, prefix=API)
 app.include_router(chat_router, prefix=API)
 app.include_router(pipeline_stages_router, prefix=API)
+app.include_router(appointments_router, prefix=API)
+app.include_router(follow_ups_router, prefix=API)
+app.include_router(recovery_router, prefix=API)
+app.include_router(demo_router, prefix=API)
 app.include_router(ws_ticket_router, prefix=API)  # POST /api/ws/ticket
 app.include_router(ws_router)  # WebSocket — no /api prefix (served at /ws/...)
 
