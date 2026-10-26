@@ -14,6 +14,34 @@ _Findings come from `docs/plan/01-code-audit.md` and `docs/plan/02-security-revi
 - **Finding ref:** ID from docs/plan/
 ```
 
+## 2026-10-26 · Chat context kept in an unbounded per-process dict and not bound to its owner
+- **Symptom:** after a restart (or on another worker) `reset_context` rebuilt history from process memory and lost it; the in-memory dict grew forever; Redis keys `livocrm:session:<session>` carried no user binding.
+- **Root cause:** dual store (Redis plus `_context_store` fallback) with reads preferring the process copy.
+- **Fix:** Redis is the only store, key `livocrm:ctx:<user>:<session>` with a 1 h TTL; on Redis errors a turn starts fresh and logs a warning (`backend/app/services/session_manager.py:30,61`); `reset_context` builds from the live context; callers pass the user id (`routers/chat.py`).
+- **Verification:** `tests/test_session_context.py` (`test_context_survives_process_restart`, `test_context_bound_to_user`, `test_redis_down_gives_fresh_context`).
+- **Finding ref:** SEC-20, CA-13
+
+## 2026-10-26 · WebSocket lifecycle: any user could subscribe to any chat session, leaks on errors, no cap
+- **Symptom:** the chat WS checked only token validity, so any logged-in user could listen to another user's session; sockets were removed from the manager only on `WebSocketDisconnect`, so other errors leaked entries; no per-user connection limit.
+- **Root cause:** ownership check skipped "to avoid a DB query"; narrow `except`; no counting.
+- **Fix:** chat tickets are issued only for the caller's own session and bound to its id (`backend/app/routers/websocket.py:177`); per-user cap of 5 sockets, close code 4029 (`websocket.py:33`); loops catch every exception and always release in `finally` (`websocket.py:219-229`).
+- **Verification:** `tests/test_ws.py::test_chat_ticket_requires_owned_session`, `test_chat_ticket_bound_to_session`, `test_connection_cap_per_user`, `test_error_in_loop_cleans_up`.
+- **Finding ref:** SEC-19
+
+## 2026-10-26 · JWT carried in WebSocket URLs and written to access logs
+- **Symptom:** `?token=<jwt>` on `/ws/*` appeared in nginx's default combined log; a leaked line allowed replay for the token's lifetime.
+- **Root cause:** browsers cannot send headers on the WS handshake, so the JWT was put in the query string; nginx logged `$request` with args.
+- **Fix:** `POST /api/ws/ticket` (`{"channel":"dashboard"}` or `{"channel":"chat","session_id":...}` -> `{"ticket","expires_in":30}`) issues a single-use Redis ticket bound to user, channel and session (`backend/app/services/ws_tickets.py`, `routers/websocket.py:177`); both WS endpoints admit only `?ticket=`, redeemed with `GETDEL` (`websocket.py:200`), close codes 4001 missing, 4002 invalid/used/expired, 4003 wrong user/session/channel; nginx `log_format noargs` uses `$uri` (`nginx/nginx.conf:12`).
+- **Verification:** `tests/test_ws.py::test_ticket_admits_once`, `test_raw_jwt_rejected`, `test_dashboard_ticket_bound_to_user`, `test_dashboard_ticket_contract`, `test_ticket_request_validated`, `test_ticket_requires_auth`; `nginx -t` ok.
+- **Finding ref:** SEC-10
+
+## 2026-10-26 · python-jose (algorithm-confusion and JWE DoS advisories) and unpinned dependencies
+- **Symptom:** `python-jose[cryptography]==3.3.0` is below the fixed release for CVE-2024-33663/33664; `redis>=5.0.0` and `boto3>=1.34.0` resolved to whatever was newest at build time; tokens had no `iat`/`jti`.
+- **Root cause:** library choice and loose pins.
+- **Fix:** `PyJWT==2.15.1`, decoding requires `exp` and `iat`, tokens get `iat` and a random `jti` (`backend/app/services/auth_service.py:31,40`); `redis==8.1.0`, `boto3==1.43.118` pinned to the versions the suite runs on (`backend/requirements.txt`). Still open: `pip-audit` reports Starlette 0.38.6 advisories (needs a FastAPI upgrade) and python-dotenv 1.0.0 (unused, removed in 0.9); token storage in localStorage (SEC-11) is a frontend/Phase-1 item.
+- **Verification:** `tests/test_tokens.py` (`test_token_has_iat_and_unique_jti`, `test_bad_token_is_401[expired|tampered|alg_none|wrong_key|no_iat]`); full suite 118 passed.
+- **Finding ref:** SEC-16, SEC-11 (iat/jti part)
+
 ## 2026-10-26 · Token with a non-UUID `sub` caused a 500
 - **Symptom:** a validly signed token whose `sub` was not a UUID (or empty) made every authenticated route return 500.
 - **Root cause:** `UUID(user_id)` in `get_current_user` raised `ValueError` outside any handler.

@@ -172,7 +172,7 @@ async def delete_session(
 
     await db.delete(session)
     await db.commit()
-    await clear_context(session_id)
+    await clear_context(user.id, session_id)
 
 
 # ── Send message ────────────────────────────────────────────────────────────
@@ -215,7 +215,7 @@ async def send_message(
         async with session_lock(session_id):
             # 2. Run orchestrator in a worker thread (with typing indicator via WS)
             await push_ai_typing(session_id, is_typing=True)
-            ctx = await get_context(session_id)
+            ctx = await get_context(user.id, session_id)
             async with llm_slots:
                 orch_response: OrchestratorResponse = await asyncio.to_thread(
                     _orchestrator.process_message, ctx, body.message
@@ -273,6 +273,7 @@ async def send_message(
             if outcome and outcome.entity_id:
                 # Transition to IDLE — preserve history + remember what was saved
                 await reset_context(
+                    user.id,
                     session_id,
                     ctx,
                     last_saved_entity={
@@ -283,7 +284,7 @@ async def send_message(
                     },
                 )
             else:
-                await _save_context(session_id, ctx)
+                await _save_context(user.id, session_id, ctx)
     except SessionBusyError:
         raise HTTPException(status_code=409, detail="Still answering your previous message in this chat")
 

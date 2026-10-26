@@ -1,8 +1,10 @@
 """Redis-backed session context manager for the AI orchestrator.
 
-Stores SessionContext objects keyed by chat session UUID in Redis,
-so conversation state survives container restarts.
-Falls back to in-memory storage if Redis is unavailable.
+Stores SessionContext objects in Redis only (SEC-20), keyed by owner and chat
+session (`livocrm:ctx:<user>:<session>`) with an inactivity TTL, so state
+survives restarts, is shared by every worker and cannot be read through
+another user's session id. If Redis is unreachable a turn starts from a
+fresh context and a warning is logged.
 """
 
 from __future__ import annotations
@@ -14,41 +16,19 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from uuid import UUID
 
-import redis.asyncio as redis
 from redis.exceptions import RedisError
 
-from app.config import settings
 from app.services.ai_engine.orchestrator import SessionContext, SessionState
 from app.services.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
 
-# Redis prefix to namespace session keys
-_REDIS_PREFIX = "livocrm:session:"
 _TTL_SECONDS = 3600  # 1 hour — sessions expire after inactivity
 _LOCK_TTL_MS = 30_000  # upper bound on one chat turn holding the session lock
 
-# Connect to Redis (initialized lazily)
-_redis: redis.Redis | None = None
-_redis_available = False
 
-
-async def _init_redis() -> None:
-    """Initialize Redis connection."""
-    global _redis, _redis_available
-    try:
-        _redis = redis.from_url(settings.REDIS_URL, decode_responses=True)
-        await _redis.ping()
-        _redis_available = True
-        logger.info("Session manager connected to Redis")
-    except Exception as e:
-        _redis = None
-        _redis_available = False
-        logger.warning("Redis unavailable for session manager — using in-memory fallback: %s", str(e))
-
-
-# Fallback in-memory store
-_context_store: dict[UUID, SessionContext] = {}
+def _key(user_id: UUID, session_id: UUID) -> str:
+    return f"livocrm:ctx:{user_id}:{session_id}"
 
 
 def _serialize(ctx: SessionContext) -> str:
@@ -78,60 +58,30 @@ def _deserialize(data: str) -> SessionContext:
     return ctx
 
 
-async def get_context(session_id: UUID) -> SessionContext:
-    """Get or create a SessionContext for a chat session."""
-    global _redis
-    if not _redis_available and _redis is None:
-        await _init_redis()
-
-    sid = str(session_id)
-
-    if _redis_available and _redis:
-        try:
-            data = await _redis.get(f"{_REDIS_PREFIX}{sid}")
-            if data:
-                return _deserialize(data)
-        except Exception:
-            logger.warning("Redis read failed for session %s", sid)
-
-    # Fallback to in-memory
-    if session_id not in _context_store:
-        _context_store[session_id] = SessionContext()
-    return _context_store[session_id]
+async def get_context(user_id: UUID, session_id: UUID) -> SessionContext:
+    """Get the user's context for a chat session, or a fresh one."""
+    try:
+        data = await get_redis().get(_key(user_id, session_id))
+    except RedisError:
+        logger.warning("Redis read failed for session %s; starting a fresh context", session_id)
+        return SessionContext()
+    return _deserialize(data) if data else SessionContext()
 
 
-async def _save_context(session_id: UUID, ctx: SessionContext) -> None:
-    """Persist the context after mutations."""
-    global _redis
-    if not _redis_available and _redis is None:
-        await _init_redis()
-
-    sid = str(session_id)
-
-    if _redis_available and _redis:
-        try:
-            await _redis.setex(f"{_REDIS_PREFIX}{sid}", _TTL_SECONDS, _serialize(ctx))
-        except Exception:
-            logger.warning("Redis write failed for session %s", sid)
-
-    # Always update in-memory too (for current process)
-    _context_store[session_id] = ctx
+async def _save_context(user_id: UUID, session_id: UUID, ctx: SessionContext) -> None:
+    """Persist the context after mutations (refreshes the TTL)."""
+    try:
+        await get_redis().set(_key(user_id, session_id), _serialize(ctx), ex=_TTL_SECONDS)
+    except RedisError:
+        logger.warning("Redis write failed for session %s", session_id)
 
 
-async def clear_context(session_id: UUID) -> None:
+async def clear_context(user_id: UUID, session_id: UUID) -> None:
     """Remove a session context (e.g., when session is closed)."""
-    global _redis
-    if not _redis_available and _redis is None:
-        await _init_redis()
-
-    sid = str(session_id)
-    _context_store.pop(session_id, None)
-
-    if _redis_available and _redis:
-        try:
-            await _redis.delete(f"{_REDIS_PREFIX}{sid}")
-        except Exception:
-            logger.warning("Redis delete failed for session %s", sid)
+    try:
+        await get_redis().delete(_key(user_id, session_id))
+    except RedisError:
+        logger.warning("Redis delete failed for session %s", session_id)
 
 
 class SessionBusyError(Exception):
@@ -168,6 +118,7 @@ async def session_lock(session_id: UUID) -> AsyncIterator[None]:
 
 
 async def reset_context(
+    user_id: UUID,
     session_id: UUID,
     old_ctx: SessionContext,
     *,
@@ -182,5 +133,5 @@ async def reset_context(
     ctx = SessionContext()
     ctx.history = old_ctx.history[-20:]  # Preserve conversation history
     ctx.last_saved_entity = last_saved_entity
-    await _save_context(session_id, ctx)
+    await _save_context(user_id, session_id, ctx)
     return ctx

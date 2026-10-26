@@ -18,6 +18,7 @@ from app.routers import (
     chat_router,
     pipeline_stages_router,
     ws_router,
+    ws_ticket_router,
 )
 
 logger = logging.getLogger(__name__)
@@ -86,6 +87,7 @@ app.include_router(analytics_router, prefix=API)
 app.include_router(ai_router, prefix=API)
 app.include_router(chat_router, prefix=API)
 app.include_router(pipeline_stages_router, prefix=API)
+app.include_router(ws_ticket_router, prefix=API)  # POST /api/ws/ticket
 app.include_router(ws_router)  # WebSocket — no /api prefix (served at /ws/...)
 
 

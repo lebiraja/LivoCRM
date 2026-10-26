@@ -34,7 +34,7 @@ async def _confirming(client: AsyncClient, user: User, intent: Intent, data: dic
     """Open a chat session whose context is waiting for a yes/no on `data`."""
     session_id = (await client.post("/api/chat/sessions", headers=auth_headers(user))).json()["id"]
     ctx = SessionContext(state=SessionState.CONFIRMING, intent=intent, collected_data=data)
-    await session_manager._save_context(UUID(session_id), ctx)
+    await session_manager._save_context(user.id, UUID(session_id), ctx)
     return session_id
 
 

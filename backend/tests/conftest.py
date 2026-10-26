@@ -32,7 +32,7 @@ from app.dependencies import get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models.user import User  # noqa: E402
 from app.routers import chat  # noqa: E402
-from app.services import bedrock_service, redis_client, session_manager  # noqa: E402
+from app.services import bedrock_service, redis_client  # noqa: E402
 from app.services.auth_service import create_access_token, hash_password  # noqa: E402
 from tests.fakes import FakeLLMProvider  # noqa: E402
 
@@ -74,9 +74,6 @@ async def db(db_conn: AsyncConnection) -> AsyncIterator[AsyncSession]:
 def fake_redis(monkeypatch: pytest.MonkeyPatch) -> FakeAsyncRedis:
     client = FakeAsyncRedis(decode_responses=True)
     monkeypatch.setattr(redis_client, "_client", client)
-    monkeypatch.setattr(session_manager, "_redis", client)
-    monkeypatch.setattr(session_manager, "_redis_available", True)
-    monkeypatch.setattr(session_manager, "_context_store", {})
     return client
 
 
