@@ -1,0 +1,157 @@
+# Test, build, push to ECR, deploy to the EC2 app host, smoke test; and deploy the SAM stack.
+# AWS access is OIDC only (no static keys). Every account, role, instance and URL value is a
+# repository variable (Settings > Secrets and variables > Actions > Variables):
+#   AWS_REGION, ECR_REGISTRY, AWS_ECR_SSM_ROLE_ARN, AWS_SAM_ROLE_ARN, APP_INSTANCE_ID, APP_URL,
+#   SAM_STACK_NAME, SAM_ARTIFACT_BUCKET, OIDC_PROVIDER_ARN, VPC_ID, BUDGET_EMAIL
+
+name: deploy
+
+# Manual only until the AWS side exists (OIDC role, variables, EC2). Re-enable `push: branches: [main]` then.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - uses: actions/setup-python@v5.3.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: cloud/requirements-test.txt
+
+      - name: Install cloud test dependencies
+        run: pip install -r requirements-test.txt
+        working-directory: cloud
+
+      - name: Lambda, ML and export tests
+        run: pytest -q
+        working-directory: cloud
+
+      - name: Backend tests in the compose test profile
+        run: docker compose --profile test run --rm --build backend-test pytest
+
+  build-push:
+    needs: test
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          role-to-assume: ${{ vars.AWS_ECR_SSM_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2.0.1
+
+      - name: Build and push backend and frontend images (tagged with the commit sha)
+        env:
+          REGISTRY: ${{ vars.ECR_REGISTRY }}
+        run: |
+          docker build --target runtime -t "$REGISTRY/livocrm-backend:$GITHUB_SHA" backend
+          docker build -t "$REGISTRY/livocrm-frontend:$GITHUB_SHA" frontend
+          docker push "$REGISTRY/livocrm-backend:$GITHUB_SHA"
+          docker push "$REGISTRY/livocrm-frontend:$GITHUB_SHA"
+
+  deploy-app:
+    needs: build-push
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          role-to-assume: ${{ vars.AWS_ECR_SSM_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Run deploy.sh on the app host through SSM Run Command
+        env:
+          INSTANCE_ID: ${{ vars.APP_INSTANCE_ID }}
+          REGISTRY: ${{ vars.ECR_REGISTRY }}
+          REGION: ${{ vars.AWS_REGION }}
+        run: |
+          command_id=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --comment "livocrm deploy $GITHUB_SHA" \
+            --parameters "{\"commands\":[\"/opt/livocrm/cloud/deploy/deploy.sh $GITHUB_SHA $REGISTRY $REGION\"]}" \
+            --query Command.CommandId --output text)
+          echo "ssm command id: $command_id"
+          aws ssm wait command-executed --command-id "$command_id" --instance-id "$INSTANCE_ID"
+
+      - name: Show deploy output
+        if: always()
+        env:
+          INSTANCE_ID: ${{ vars.APP_INSTANCE_ID }}
+        run: |
+          latest=$(aws ssm list-command-invocations --instance-id "$INSTANCE_ID" --query 'CommandInvocations[0].CommandId' --output text)
+          aws ssm get-command-invocation --command-id "$latest" --instance-id "$INSTANCE_ID" \
+            --query '[Status, StandardOutputContent, StandardErrorContent]' --output text
+
+  smoke-test:
+    needs: deploy-app
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Health and front page over HTTPS
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          curl --fail --silent --show-error --retry 10 --retry-delay 6 --retry-all-errors "$APP_URL/api/health"
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors --output /dev/null "$APP_URL/"
+
+  sam-deploy:
+    needs: test
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - uses: aws-actions/setup-sam@v2
+
+      - uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          role-to-assume: ${{ vars.AWS_SAM_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: sam build
+        run: sam build --template-file template.yaml --use-container
+        working-directory: cloud
+
+      - name: sam deploy
+        working-directory: cloud
+        env:
+          STACK_NAME: ${{ vars.SAM_STACK_NAME }}
+          ARTIFACT_BUCKET: ${{ vars.SAM_ARTIFACT_BUCKET }}
+          REGION: ${{ vars.AWS_REGION }}
+          OIDC_PROVIDER_ARN: ${{ vars.OIDC_PROVIDER_ARN }}
+          VPC_ID: ${{ vars.VPC_ID }}
+          BUDGET_EMAIL: ${{ vars.BUDGET_EMAIL }}
+        run: |
+          sam deploy \
+            --template-file .aws-sam/build/template.yaml \
+            --stack-name "$STACK_NAME" \
+            --region "$REGION" \
+            --s3-bucket "$ARTIFACT_BUCKET" \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+              "GitHubOidcProviderArn=$OIDC_PROVIDER_ARN" \
+              "GitHubRepository=$GITHUB_REPOSITORY" \
+              "VpcId=$VPC_ID" \
+              "BudgetEmail=$BUDGET_EMAIL"
