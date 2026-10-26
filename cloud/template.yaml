@@ -1,0 +1,553 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  LivoCRM IA3 cloud pipeline. Curated data bucket, ETL and nightly scoring Lambdas,
+  least-privilege roles, ECR repositories, app security group and GitHub OIDC deploy roles.
+  Bucket and role names are derived from the account and region; no account id is hard-coded.
+
+Parameters:
+  GitHubOidcProviderArn:
+    Type: String
+    Description: ARN of the existing IAM OIDC provider for token.actions.githubusercontent.com (one per account)
+  GitHubRepository:
+    Type: String
+    Description: owner/repo allowed to assume the deploy roles (CI passes github.repository)
+    AllowedPattern: "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC for the app security group (default VPC is fine for the IA3 demo)
+  ModelKey:
+    Type: String
+    Default: models/no-show/current/model.tar.gz
+    Description: S3 key of the SageMaker model.tar.gz that the score Lambda loads
+  BudgetEmail:
+    Type: String
+    Description: Address that receives AWS Budgets alerts
+  BudgetLimitUsd:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    Description: Monthly cost cap in USD for the whole account budget
+
+Resources:
+  # ── Data bucket: raw exports, curated Parquet, scoring I/O, DB backups ───
+  DataBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    DependsOn: EtlS3InvokePermission
+    Properties:
+      BucketName: !Sub livocrm-data-${AWS::AccountId}-${AWS::Region}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-scoring-io
+            Status: Enabled
+            Prefix: scoring/
+            ExpirationInDays: 30
+          - Id: expire-db-backups
+            Status: Enabled
+            Prefix: backups/
+            ExpirationInDays: 30
+          - Id: expire-raw-livocrm-exports
+            Status: Enabled
+            Prefix: raw/livocrm/
+            ExpirationInDays: 90
+          - Id: abort-incomplete-uploads
+            Status: Enabled
+            Prefix: ""
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:*
+            Function: !GetAtt EtlFunction.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: raw/
+
+  DataBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DataBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !Sub arn:${AWS::Partition}:s3:::livocrm-data-${AWS::AccountId}-${AWS::Region}
+              - !Sub arn:${AWS::Partition}:s3:::livocrm-data-${AWS::AccountId}-${AWS::Region}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  # ── ETL Lambda: raw/ ObjectCreated + nightly schedule ───────────────────
+  EtlS3InvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref EtlFunction
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:${AWS::Partition}:s3:::livocrm-data-${AWS::AccountId}-${AWS::Region}
+
+  EtlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Validate, clean and feature-engineer appointment CSVs into curated Parquet
+      CodeUri: lambdas/etl/
+      Handler: livocrm_etl.handler.lambda_handler
+      Runtime: python3.12
+      Architectures: [x86_64]
+      Role: !GetAtt EtlRole.Arn
+      MemorySize: 1024
+      Timeout: 300
+      Environment:
+        Variables:
+          DATA_BUCKET: !Sub livocrm-data-${AWS::AccountId}-${AWS::Region}
+          CURATED_PREFIX: curated/appointments/
+      Events:
+        NightlyLivocrmExport:
+          Type: Schedule
+          Properties:
+            Schedule: cron(30 21 * * ? *)
+            Description: 03:00 IST - process the newest raw/livocrm/ export
+
+  EtlRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: etl-data-access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ReadRawExports
+                Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub arn:${AWS::Partition}:s3:::livocrm-data-${AWS::AccountId}-${AWS::Region}/raw/*
+              - Sid: ListRawExports
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: !Sub arn:${AWS::Partition}:s3:::livocrm-data-${AWS::AccountId}-${AWS::Region}
+                Condition:
+                  StringLike:
+                    s3:prefix: raw/*
+              - Sid: WriteCuratedParquet
+                Effect: Allow
+                Action: s3:PutObject
+                Resource: !Sub arn:${AWS::Partition}:s3:::livocrm-data-${AWS::AccountId}-${AWS::Region}/curated/*
+
+  # ── Score Lambda: direct invoke (JSON) + nightly schedule ───────────────
+  ScoreFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Score upcoming appointments with the SageMaker model; returns no_show_risk 0-1
+      CodeUri: lambdas/score/
+      Handler: livocrm_score.handler.lambda_handler
+      Runtime: python3.12
+      Architectures: [x86_64]
+      Role: !GetAtt ScoreRole.Arn
+      MemorySize: 1024
+      Timeout: 120
+      Environment:
+        Variables:
+          MODEL_BUCKET: !Sub livocrm-data-${AWS::AccountId}-${AWS::Region}
+          MODEL_KEY: !Ref ModelKey
+          UPCOMING_KEY: scoring/upcoming/latest.json
+          RESULTS_KEY: scoring/results/latest.json
+      Events:
+        NightlyScore:
+          Type: Schedule
+          Properties:
+            Schedule: cron(30 22 * * ? *)
+            Description: 04:00 IST - score scoring/upcoming/latest.json
+
+  ScoreRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: score-model-access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ReadModelArtifacts
+                Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub arn:${AWS::Partition}:s3:::livocrm-data-${AWS::AccountId}-${AWS::Region}/models/*
+              - Sid: ReadUpcomingBatch
+                Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub arn:${AWS::Partition}:s3:::livocrm-data-${AWS::AccountId}-${AWS::Region}/scoring/upcoming/*
+              - Sid: WriteScores
+                Effect: Allow
+                Action: s3:PutObject
+                Resource: !Sub arn:${AWS::Partition}:s3:::livocrm-data-${AWS::AccountId}-${AWS::Region}/scoring/results/*
+
+  # ── Container registries for the app images ─────────────────────────────
+  BackendRepo:
+    Type: AWS::ECR::Repository
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      RepositoryName: livocrm-backend
+      ImageTagMutability: MUTABLE
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      EncryptionConfiguration:
+        EncryptionType: AES256
+      LifecyclePolicy:
+        LifecyclePolicyText: >-
+          {"rules":[{"rulePriority":1,"description":"keep last 20 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":20},"action":{"type":"expire"}}]}
+
+  FrontendRepo:
+    Type: AWS::ECR::Repository
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      RepositoryName: livocrm-frontend
+      ImageTagMutability: MUTABLE
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      EncryptionConfiguration:
+        EncryptionType: AES256
+      LifecyclePolicy:
+        LifecyclePolicyText: >-
+          {"rules":[{"rulePriority":1,"description":"keep last 20 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":20},"action":{"type":"expire"}}]}
+
+  # ── App host: security group (80/443 only) and instance role ────────────
+  AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: LivoCRM app host. HTTP and HTTPS only; shell access through SSM Session Manager.
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: HTTP (Caddy ACME challenge and redirect)
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS (app)
+      Tags:
+        - Key: Project
+          Value: livocrm
+
+  AppInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: app-host
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: EcrLogin
+                Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: "*"
+              - Sid: EcrPullAppImages
+                Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Resource:
+                  - !GetAtt BackendRepo.Arn
+                  - !GetAtt FrontendRepo.Arn
+              - Sid: ReadAppSecrets
+                Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                  - ssm:GetParametersByPath
+                Resource: !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/livocrm/prod/*
+              - Sid: DecryptSsmSecureStrings
+                Effect: Allow
+                Action: kms:Decrypt
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    kms:ViaService: !Sub ssm.${AWS::Region}.amazonaws.com
+              - Sid: WriteDbBackups
+                Effect: Allow
+                Action: s3:PutObject
+                Resource: !Sub arn:${AWS::Partition}:s3:::livocrm-data-${AWS::AccountId}-${AWS::Region}/backups/*
+              - Sid: ReadScoringResults
+                Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub arn:${AWS::Partition}:s3:::livocrm-data-${AWS::AccountId}-${AWS::Region}/scoring/results/*
+
+  AppInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref AppInstanceRole
+
+  # ── GitHub Actions deploy roles (OIDC, no static keys) ──────────────────
+  GitHubEcrSsmRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GitHubOidcProviderArn
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubRepository}:ref:refs/heads/main
+      Policies:
+        - PolicyName: ecr-push-and-ssm-run
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: EcrLogin
+                Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: "*"
+              - Sid: PushAppImages
+                Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
+                  - ecr:PutImage
+                Resource:
+                  - !GetAtt BackendRepo.Arn
+                  - !GetAtt FrontendRepo.Arn
+              - Sid: RunDeployOnAppHost
+                Effect: Allow
+                Action: ssm:SendCommand
+                Resource:
+                  - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-RunShellScript
+                  - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+              - Sid: ReadCommandResult
+                Effect: Allow
+                Action:
+                  - ssm:GetCommandInvocation
+                  - ssm:ListCommandInvocations
+                Resource: "*"
+
+  GitHubSamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GitHubOidcProviderArn
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubRepository}:ref:refs/heads/main
+      Policies:
+        - PolicyName: sam-deploy-livocrm-stack
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: StackOperations
+                Effect: Allow
+                Action:
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DeleteChangeSet
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:GetTemplate
+                  - cloudformation:GetTemplateSummary
+                Resource: !Sub arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/livocrm-*/*
+              - Sid: LambdaFunctions
+                Effect: Allow
+                Action: lambda:*
+                Resource: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:livocrm-*
+              - Sid: ScheduleRules
+                Effect: Allow
+                Action: events:*
+                Resource: !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/livocrm-*
+              - Sid: FunctionLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:DeleteLogGroup
+                  - logs:PutRetentionPolicy
+                  - logs:DescribeLogGroups
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/livocrm-*
+              - Sid: ExecutionRolesOnly
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:TagRole
+                  - iam:UpdateAssumeRolePolicy
+                  - iam:PutRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/livocrm-*
+              - Sid: PassExecutionRolesToLambda
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/livocrm-*
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: lambda.amazonaws.com
+              - Sid: InstanceProfileForAppHost
+                Effect: Allow
+                Action:
+                  - iam:CreateInstanceProfile
+                  - iam:DeleteInstanceProfile
+                  - iam:GetInstanceProfile
+                  - iam:AddRoleToInstanceProfile
+                  - iam:RemoveRoleFromInstanceProfile
+                Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/livocrm-*
+              - Sid: DataBucketManagement
+                Effect: Allow
+                Action: s3:*
+                Resource:
+                  - !Sub arn:${AWS::Partition}:s3:::livocrm-data-${AWS::AccountId}-${AWS::Region}
+                  - !Sub arn:${AWS::Partition}:s3:::livocrm-data-${AWS::AccountId}-${AWS::Region}/*
+              - Sid: SamArtifactBucket
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:GetBucketLocation
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:${AWS::Partition}:s3:::livocrm-sam-artifacts-${AWS::AccountId}-${AWS::Region}
+                  - !Sub arn:${AWS::Partition}:s3:::livocrm-sam-artifacts-${AWS::AccountId}-${AWS::Region}/*
+              - Sid: AppRepositories
+                Effect: Allow
+                Action: ecr:*
+                Resource: !Sub arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/livocrm-*
+              - Sid: SecurityGroupForAppHost
+                Effect: Allow
+                Action:
+                  - ec2:CreateSecurityGroup
+                  - ec2:DeleteSecurityGroup
+                  - ec2:AuthorizeSecurityGroupIngress
+                  - ec2:RevokeSecurityGroupIngress
+                  - ec2:CreateTags
+                Resource: "*"
+              - Sid: DescribeForStackOperations
+                Effect: Allow
+                Action:
+                  - ec2:DescribeSecurityGroups
+                  - ec2:DescribeVpcs
+                  - iam:ListRolePolicies
+                  - iam:ListAttachedRolePolicies
+                  - ssm:GetParameter
+                Resource: "*"
+              - Sid: MonthlyBudget
+                Effect: Allow
+                Action:
+                  - budgets:CreateBudget
+                  - budgets:ModifyBudget
+                  - budgets:DeleteBudget
+                  - budgets:ViewBudget
+                Resource: !Sub arn:${AWS::Partition}:budgets::${AWS::AccountId}:budget/livocrm-*
+
+  MonthlyBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: livocrm-monthly-cap
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit:
+          Amount: !Ref BudgetLimitUsd
+          Unit: USD
+      NotificationsWithSubscribers:
+        - Notification:
+            ComparisonOperator: GREATER_THAN
+            NotificationType: ACTUAL
+            Threshold: 80
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref BudgetEmail
+        - Notification:
+            ComparisonOperator: GREATER_THAN
+            NotificationType: FORECASTED
+            Threshold: 100
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref BudgetEmail
+
+Outputs:
+  DataBucketName:
+    Description: Curated data, raw exports, scoring I/O and DB backups
+    Value: !Sub livocrm-data-${AWS::AccountId}-${AWS::Region}
+  EtlFunctionName:
+    Value: !Ref EtlFunction
+  ScoreFunctionName:
+    Value: !Ref ScoreFunction
+  BackendRepositoryUri:
+    Description: Push target for the backend image (prefix with the account registry host)
+    Value: !Ref BackendRepo
+  FrontendRepositoryUri:
+    Value: !Ref FrontendRepo
+  AppInstanceProfileName:
+    Description: Attach to the EC2 app host (instance profile)
+    Value: !Ref AppInstanceProfile
+  AppSecurityGroupId:
+    Value: !Ref AppSecurityGroup
+  GitHubEcrSsmRoleArn:
+    Description: Set as repository variable AWS_ECR_SSM_ROLE_ARN
+    Value: !GetAtt GitHubEcrSsmRole.Arn
+  GitHubSamRoleArn:
+    Description: Set as repository variable AWS_SAM_ROLE_ARN
+    Value: !GetAtt GitHubSamRole.Arn

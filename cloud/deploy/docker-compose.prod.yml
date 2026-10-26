@@ -1,0 +1,46 @@
+# Production override. Run from /opt/livocrm:
+#   docker compose -f docker-compose.yml -f cloud/deploy/docker-compose.prod.yml up -d --no-build
+# Needs Docker Compose >= 2.24.4 (for the !reset tag). IMAGE_TAG and ECR_REGISTRY come from the
+# environment (cloud/deploy/deploy.sh); APP_DOMAIN and all app secrets come from /opt/livocrm/.env.
+#
+# Base file already publishes nothing for db and redis; only nginx's :3500 is removed here and
+# replaced by Caddy on 80/443.
+
+services:
+  backend:
+    image: ${ECR_REGISTRY}/livocrm-backend:${IMAGE_TAG:?set IMAGE_TAG}
+    build: !reset null
+
+  frontend:
+    image: ${ECR_REGISTRY}/livocrm-frontend:${IMAGE_TAG:?set IMAGE_TAG}
+    build: !reset null
+
+  nginx:
+    ports: !reset []
+
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?set APP_DOMAIN}
+    volumes:
+      - ./cloud/deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      nginx:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:2019/config/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - livocrm
+
+volumes:
+  caddy_data:
+  caddy_config:

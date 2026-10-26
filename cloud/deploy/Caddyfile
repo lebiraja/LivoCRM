@@ -1,0 +1,6 @@
+# Caddy terminates TLS (Let's Encrypt, automatic) and forwards to the app's own Nginx.
+# APP_DOMAIN is read from /opt/livocrm/.env; the DNS A record must point at the app host's Elastic IP.
+{$APP_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy nginx:80
+}
