@@ -79,7 +79,8 @@ def extract_data(
             cleaned = cleaned.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
         data = json.loads(cleaned)
 
-        extracted = data.get("extracted", {})
+        # Model output may only fill schema fields: never ids or invented keys (SEC-05)
+        extracted = {k: v for k, v in data.get("extracted", {}).items() if k in schema}
 
         # Merge: anything already collected + newly extracted
         merged = {**already, **extracted}

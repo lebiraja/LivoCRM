@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from app.services.bedrock_service import chat_completion, BedrockServiceError
 from app.services.ai_engine.intent_classifier import classify_intent, Intent
@@ -34,6 +35,29 @@ ENTITY_INTENTS = {
     Intent.UPDATE_CONTACT,
     Intent.UPDATE_DEAL,
 }
+
+
+_NEGATIVE_WORDS = {
+    "no", "nope", "nah", "not", "don't", "dont", "never", "cancel", "stop", "abort",
+    "wrong", "change", "edit", "fix", "update", "but", "wait",
+}
+_AFFIRMATIVE_WORDS = {"yes", "yep", "yeah", "correct", "confirm", "save", "ok", "okay", "sure", "fine"}
+_AFFIRMATIVE_PHRASES = ("looks good", "go ahead", "do it")
+
+
+def parse_confirmation(user_message: str) -> Literal["confirm", "reject", "unclear"]:
+    """Classify a reply to "shall I save this?" (SEC-04, interim until a confirm endpoint).
+
+    Negation wins: any negative or hedging word ("no", "don't", "but", "change")
+    rejects, so "no, don't save" or "yes but change the email" never saves.
+    """
+    text = user_message.lower().replace("\u2019", "'")
+    words = set(re.findall(r"[a-z']+", text))
+    if words & _NEGATIVE_WORDS or "do not" in text:
+        return "reject"
+    if words & _AFFIRMATIVE_WORDS or any(phrase in text for phrase in _AFFIRMATIVE_PHRASES):
+        return "confirm"
+    return "unclear"
 
 
 @dataclass
@@ -280,19 +304,11 @@ class Orchestrator:
         self, ctx: SessionContext, user_message: str
     ) -> OrchestratorResponse:
         """Handle yes/no confirmation response."""
-        msg = user_message.strip().lower()
-
-        # Tokenize message to avoid substring matches on words, but keep full string check as fallback
-        words = msg.replace(".", " ").replace(",", " ").split()
-
-        affirmative = ["yes", "yep", "yeah", "correct", "confirm", "save", "looks good", "go ahead", "do it", "ok", "okay", "sure", "fine"]
-        negative = ["no", "nope", "change", "edit", "wrong", "fix", "update", "cancel", "stop", "abort"]
-
-        is_affirmative = any(word in words for word in affirmative) or any(phrase in msg for phrase in ["looks good", "go ahead", "do it"])
-        is_negative = any(word in words for word in negative)
+        words = user_message.lower().split()
+        verdict = parse_confirmation(user_message)
 
         # Check for affirmative responses
-        if is_affirmative:
+        if verdict == "confirm":
             ctx.state = SessionState.SAVING
             entity_type = (
                 ctx.intent.value
@@ -322,7 +338,7 @@ class Orchestrator:
             return response
 
         # Check for negative / change requests
-        if is_negative:
+        if verdict == "reject":
             ctx.state = SessionState.COLLECTING
             ai_msg = "No problem! What would you like to change?"
             response = OrchestratorResponse(

@@ -9,18 +9,24 @@ from __future__ import annotations
 
 import json
 import logging
+import secrets
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from uuid import UUID
 
 import redis.asyncio as redis
+from redis.exceptions import RedisError
 
 from app.config import settings
 from app.services.ai_engine.orchestrator import SessionContext, SessionState
+from app.services.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
 
 # Redis prefix to namespace session keys
 _REDIS_PREFIX = "livocrm:session:"
 _TTL_SECONDS = 3600  # 1 hour — sessions expire after inactivity
+_LOCK_TTL_MS = 30_000  # upper bound on one chat turn holding the session lock
 
 # Connect to Redis (initialized lazily)
 _redis: redis.Redis | None = None
@@ -128,8 +134,42 @@ async def clear_context(session_id: UUID) -> None:
             logger.warning("Redis delete failed for session %s", sid)
 
 
+class SessionBusyError(Exception):
+    """Another chat turn for the same session is still running."""
+
+
+@asynccontextmanager
+async def session_lock(session_id: UUID) -> AsyncIterator[None]:
+    """Serialise chat turns per session (SEC-08): SET NX PX, deleted only by its owner.
+
+    Fails open with a warning when Redis is unreachable, like the rate limiter.
+    """
+    client = get_redis()
+    key = f"livocrm:lock:chat:{session_id}"
+    token = secrets.token_hex(8)
+    try:
+        acquired = await client.set(key, token, nx=True, px=_LOCK_TTL_MS)
+    except RedisError:
+        logger.warning("Chat lock skipped for session %s: Redis unavailable", session_id)
+        acquired = None
+    else:
+        if not acquired:
+            raise SessionBusyError
+    try:
+        yield
+    finally:
+        if acquired:
+            async with client.pipeline() as pipe:
+                await pipe.watch(key)
+                if await pipe.get(key) == token:
+                    pipe.multi()
+                    pipe.delete(key)
+                    await pipe.execute()
+
+
 async def reset_context(
     session_id: UUID,
+    old_ctx: SessionContext,
     *,
     last_saved_entity: dict | None = None,
 ) -> SessionContext:
@@ -139,10 +179,8 @@ async def reset_context(
     - Conversation history (so the AI remembers the conversation)
     - Last saved entity info (so the user can immediately follow up)
     """
-    old_ctx = _context_store.get(session_id)
     ctx = SessionContext()
-    if old_ctx:
-        ctx.history = old_ctx.history[-20:]  # Preserve conversation history
+    ctx.history = old_ctx.history[-20:]  # Preserve conversation history
     ctx.last_saved_entity = last_saved_entity
     await _save_context(session_id, ctx)
     return ctx
