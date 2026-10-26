@@ -1,0 +1,5 @@
+-r lambdas/etl/requirements.txt
+-r lambdas/score/requirements.txt
+-r ml/requirements.txt
+boto3==1.35.36
+pytest==8.3.3
