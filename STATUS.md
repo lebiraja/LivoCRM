@@ -2,6 +2,14 @@
 
 Session log. Newest entry on top.
 
+## 2026-10-26 · v0.3.0-groq · Phase 1 (lean): Groq provider with multi-key pool
+- **Done:** `app/services/llm/key_pool.py` (load balancing by remaining tokens, 429 cooldown and instant failover, 401 disable, secrets only as key ids) and `groq_client.py` (httpx, strict timeouts, 4 attempts max, no content in logs); `chat_completion` and insights dispatch on `LLM_PROVIDER` (default `groq`, Bedrock kept as legacy); `GET /api/ai/health` shows per-key state without secrets; `.env.example` documents `GROQ_API_KEYS` (1 to N keys). 23 new tests; full suite 161 passed, 82% coverage, ruff clean.
+- **Verified live:** both `openai/gpt-oss-20b` and `openai/gpt-oss-120b` answer on the account (8,000 TPM, 1,000 RPD); 6 live calls through the 3-key pool spread 2 per key.
+- **Deviations from plan:** key state is per process (not Redis); sync client inside `to_thread` (no full async rewrite); strict json_schema, budget guard, confirm endpoint and Bedrock removal deferred (interim negation-safe confirm from Phase 0 stays).
+- **Caveat:** Groq limits are per organisation; keys from one org share a bucket. Rotate the keys after the demo (they were pasted in chat).
+- **Found while testing:** own bug in the first draft (retry helper returned text for failures); caught by the failover test before merge.
+- **Next:** Phase 2/3/6 are running in parallel as Haiku agents in worktrees (p2-backend, p3-frontend, p6-cloud).
+
 ## 2026-10-26 · v0.2.0-secure · Phase 0 complete (gate 0)
 - **Done:** Test harness (138 backend tests, 81% coverage; 15 frontend tests), SEC-01 to SEC-28 stop-ship fixes, WebSocket tickets, PyJWT, rate limiting, PII-free logging, container and nginx hardening, 41 dead frontend files removed, fonts self-hosted, fake UI data removed. 14 issues opened (#6-#19). Verified by lead: pytest 138 passed, ruff clean, compose policy ok, frontend build + vitest + eslint clean.
 - **Open:** `pip-audit` flags Starlette 0.38.6 (needs FastAPI upgrade, planned in Phase 1/4); mypy has 22 pre-existing errors (not a gate yet); SEC-11 token storage, SEC-29 DPDP data export/delete, WS close at token expiry are later phases.

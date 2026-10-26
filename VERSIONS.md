@@ -4,6 +4,7 @@ Version history for the IA3 build of LivoCRM. Newest on top. Bump the version an
 
 | Version | Date | Summary |
 |---|---|---|
+| v0.3.0-groq | 2026-10-26 | Gate 1 (lean): Groq provider, multi-key pool, AI health endpoint, 161 backend tests. |
 | v0.2.0-secure | 2026-10-26 | Gate 0: security and data-integrity fixes, test harness (138 backend + 15 frontend tests), dead code removed. |
 | v0.1.0-ia3-plan | 2026-10-26 | Cloned LivoCRM into `full-stack/`. Audit, security review, UI research, feature research and implementation plans written under `docs/plan/`. Tracking files created. No source code changed. |
 | v0.0.0-baseline | 2026-04-08 | Upstream LivoCRM at `c82bbcd` (FastAPI + React + Postgres + Redis, AWS Bedrock AI layer). Starting point for IA3. |

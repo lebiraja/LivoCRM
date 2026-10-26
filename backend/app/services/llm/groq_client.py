@@ -95,18 +95,20 @@ def groq_chat(
                 lease = pool.acquire(model)
                 if lease is None:
                     raise GroqServiceError("all Groq keys are rate limited or disabled")
-            outcome = _attempt(client, pool, lease, body)
-            if isinstance(outcome, str):
-                return outcome
-            last = outcome
+            text, failure = _attempt(client, pool, lease, body)
+            if text is not None:
+                return text
+            last = failure
         raise GroqServiceError(last)
     finally:
         if http is None:
             client.close()
 
 
-def _attempt(client: httpx.Client, pool: KeyPool, lease: Lease, body: dict[str, object]) -> str:
-    """Return the completion text, or a short failure label to retry on another key."""
+def _attempt(
+    client: httpx.Client, pool: KeyPool, lease: Lease, body: dict[str, object]
+) -> tuple[str | None, str]:
+    """Return (text, "") on success, or (None, failure label) when another key should be tried."""
     try:
         resp = client.post(
             "/chat/completions",
@@ -115,24 +117,24 @@ def _attempt(client: httpx.Client, pool: KeyPool, lease: Lease, body: dict[str, 
         )
     except httpx.TimeoutException:
         logger.warning("groq timeout key=%s model=%s", lease.id, lease.model)
-        return "timeout"
+        return None, "timeout"
     except httpx.HTTPError as exc:
         logger.warning("groq transport error key=%s type=%s", lease.id, type(exc).__name__)
-        return "transport error"
+        return None, "transport error"
 
     status = resp.status_code
     if status == 429:
         retry_after = parse_duration(resp.headers.get("retry-after"))
         pool.report_rate_limited(lease, retry_after)
         logger.warning("groq 429 key=%s model=%s retry_after=%s", lease.id, lease.model, retry_after)
-        return "rate limited"
+        return None, "rate limited"
     if status in (401, 403):
         pool.report_auth_failure(lease)
         logger.error("groq rejected key=%s status=%s", lease.id, status)
-        return "key rejected"
+        return None, "key rejected"
     if status >= 500 or status in (408, 498):
         logger.warning("groq server error key=%s status=%s", lease.id, status)
-        return f"server error {status}"
+        return None, f"server error {status}"
     if status >= 400:
         raise GroqServiceError(f"Groq rejected the request (HTTP {status})")
 
@@ -143,4 +145,4 @@ def _attempt(client: httpx.Client, pool: KeyPool, lease: Lease, body: dict[str, 
         raise GroqServiceError("unexpected Groq response shape") from exc
     if not text:
         raise GroqServiceError("Groq response did not contain usable text")
-    return text
+    return text, ""

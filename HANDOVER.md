@@ -1,14 +1,14 @@
 # HANDOVER
 
-> Version: v0.2.0-secure · Last changed: 2026-10-26
+> Version: v0.3.0-groq · Last changed: 2026-10-26
 
-## Current (v0.2.0-secure)
+## Current (v0.3.0-groq)
 
 ### What this is
 LivoCRM reused for Full Stack Development IA3 (30 marks: front-end, back-end, functionality, presentation, innovation, documentation) and as a demo for the Tamil follow-up desk startup idea (clinics first). Stack: FastAPI, React/Vite + Tailwind + shadcn/ui, PostgreSQL, Redis, Nginx, Docker Compose. **Do not change the stack.** AI layer is moving to the Groq API.
 
 ### Where we are
-Phase 0 (gate 0) is done and merged: security fixes, tests, cleanup. Master plan: `docs/plan/00-master-plan.md`. Next is Phase 1 (Groq provider + multi-key pool); the three Groq keys are in the gitignored `.env` as `GROQ_API_KEYS`. Estimated work is 128-178 h; scope must be cut before starting. Read, in this order:
+Phase 0 (gate 0) is done and merged: security fixes, tests, cleanup. Master plan: `docs/plan/00-master-plan.md`. Phase 1 (Groq provider + multi-key pool) is merged. Phases 2, 3 and 6 are being built in parallel worktrees per `docs/plan/10-phase2-contract.md`; the three Groq keys are in the gitignored `.env` as `GROQ_API_KEYS`. Estimated work is 128-178 h; scope must be cut before starting. Read, in this order:
 1. `docs/plan/README.md` (index of all plan docs)
 2. `docs/plan/03-implementation-plan.md` (phased work)
 3. `docs/plan/02-security-review.md` (Phase 0 fixes)
