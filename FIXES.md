@@ -14,6 +14,27 @@ _Findings come from `docs/plan/01-code-audit.md` and `docs/plan/02-security-revi
 - **Finding ref:** ID from docs/plan/
 ```
 
+## 2026-10-26 · Chat WebSocket reconnected after unmount or session switch
+- **Symptom:** after leaving a chat or switching sessions the old socket kept reconnecting.
+- **Root cause:** `onclose` scheduled a retry after cleanup had already cleared the timer.
+- **Fix:** `closedByUs` guard, plus no retry on terminal close codes 4001/4003/4029 (`frontend/src/hooks/useWebSocket.ts:82`).
+- **Verification:** `useWebSocket.test.ts` (10 tests); the unmount test fails when the guard is removed.
+- **Finding ref:** CA-17
+
+## 2026-10-26 · Analytics showed "$50000k"
+- **Symptom:** rupee values rendered as `$50000k`.
+- **Root cause:** hard-coded `$` prefix and `k` suffix applied to raw rupee amounts.
+- **Fix:** single `formatINR` using `Intl.NumberFormat('en-IN')` (`frontend/src/lib/format.ts:12`).
+- **Verification:** `frontend/src/lib/format.test.ts` (3 tests).
+- **Finding ref:** CA-19
+
+## 2026-10-26 · Clean frontend build failed on a missing `next-themes`
+- **Symptom:** `npm ci && npm run build` failed with TS2307 for `next-themes`.
+- **Root cause:** `ui/sonner.tsx` imported a package that was in the lockfile but not in `package.json`.
+- **Fix:** removed the `useTheme` import (`frontend/src/components/ui/sonner.tsx:4`).
+- **Verification:** `tsc -b && vite build` passes from a clean install in Docker.
+- **Finding ref:** CA (build)
+
 ## 2026-10-26 · Extractor system prompt showed the model literal double braces
 - **Symptom:** the model was told to answer `{{"extracted": {{...}}}}`, an invalid JSON example.
 - **Root cause:** `DATA_EXTRACTOR_SYSTEM` was written as if `.format()`-ed but never is.

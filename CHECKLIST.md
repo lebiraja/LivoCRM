@@ -11,10 +11,10 @@ Master checklist for the IA3 build. Tick items as they are verified, not when st
 - [ ] Confirm IA3 deadline and the case study wording with Dr. Jenefa
 
 ## 1. Phase 0: stop-ship fixes (from audit)
-- [ ] Critical security findings fixed and logged in `FIXES.md`
-- [ ] Data-integrity and session-state findings fixed
-- [ ] `frontend/tmp-scaffold` removed
-- [ ] No secrets in repo or history; `.env.example` complete
+- [x] Critical security findings fixed and logged in `FIXES.md`
+- [x] Data-integrity and session-state findings fixed
+- [x] `frontend/tmp-scaffold` removed
+- [x] No secrets in repo or history; `.env.example` complete (gitleaks clean)
 
 ## 2. Groq migration
 - [ ] Provider interface in place, Bedrock path removed or optional
