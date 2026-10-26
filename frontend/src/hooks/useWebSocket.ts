@@ -9,6 +9,12 @@ const WS_BASE =
 const MAX_RETRIES = 5;
 const BASE_DELAY_MS = 1000;
 const MAX_DELAY_MS = 30_000;
+/**
+ * Server close codes after which retrying cannot help: 4001 missing ticket,
+ * 4003 ticket for another user/session/channel, 4029 per-user socket cap.
+ * 4002 (invalid/used/expired ticket) is retried with a fresh ticket.
+ */
+const NO_RETRY_CLOSE_CODES: ReadonlySet<number> = new Set([4001, 4003, 4029]);
 
 interface UseWebSocketOptions {
   channel: "chat" | "dashboard";
@@ -76,9 +82,14 @@ export function useWebSocket({ channel, id, onMessage, onStatus }: UseWebSocketO
         }
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         ws = null;
-        if (!closedByUs) scheduleReconnect();
+        if (closedByUs) return;
+        if (NO_RETRY_CLOSE_CODES.has(event.code)) {
+          handlersRef.current.onStatus?.("disconnected");
+          return;
+        }
+        scheduleReconnect();
       };
     }
 

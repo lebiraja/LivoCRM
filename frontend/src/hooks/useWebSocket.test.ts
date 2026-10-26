@@ -12,7 +12,7 @@ class FakeWebSocket {
   url: string;
   onopen: (() => void) | null = null;
   onmessage: ((event: { data: string }) => void) | null = null;
-  onclose: (() => void) | null = null;
+  onclose: ((event: { code: number }) => void) | null = null;
   close = vi.fn();
 
   constructor(url: string) {
@@ -88,7 +88,7 @@ describe("useWebSocket", () => {
     FakeWebSocket.instances[0].onopen?.();
     expect(onStatus).toHaveBeenLastCalledWith("connected");
 
-    FakeWebSocket.instances[0].onclose?.();
+    FakeWebSocket.instances[0].onclose?.({ code: 1006 });
     expect(onStatus).toHaveBeenLastCalledWith("disconnected");
 
     await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(2), { timeout: 3000 });
@@ -98,6 +98,35 @@ describe("useWebSocket", () => {
       "ticket",
       "connect ws://localhost:3000/ws/chat/sess-1?ticket=t-2",
     ]);
+  });
+
+  it.each([4001, 4003, 4029])("does not retry after close code %i", async (code) => {
+    mockTicketEndpoint([{ ticket: "t-1", expires_in: 30 }]);
+    const onStatus = vi.fn();
+
+    renderHook(() => useWebSocket({ channel: "chat", id: "sess-1", onStatus }));
+    await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1));
+
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    FakeWebSocket.instances[0].onclose?.({ code });
+    vi.advanceTimersByTime(60_000);
+
+    expect(onStatus).toHaveBeenLastCalledWith("disconnected");
+    expect(onStatus.mock.calls.filter(([s]) => s === "connecting")).toHaveLength(1);
+  });
+
+  it("retries with a fresh ticket after close code 4002", async () => {
+    mockTicketEndpoint([
+      { ticket: "t-1", expires_in: 30 },
+      { ticket: "t-2", expires_in: 30 },
+    ]);
+
+    renderHook(() => useWebSocket({ channel: "chat", id: "sess-1" }));
+    await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1));
+    FakeWebSocket.instances[0].onclose?.({ code: 4002 });
+
+    await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(2), { timeout: 3000 });
+    expect(FakeWebSocket.instances[1].url).toContain("ticket=t-2");
   });
 
   it("does not reconnect after unmount", async () => {
@@ -111,7 +140,7 @@ describe("useWebSocket", () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     unmount();
     // Browsers fire onclose after close(); that must not schedule a retry
-    socket.onclose?.();
+    socket.onclose?.({ code: 1006 });
     vi.advanceTimersByTime(60_000);
 
     expect(socket.close).toHaveBeenCalledOnce();
