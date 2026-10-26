@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     LLM_TIMEOUT_S: float = 15.0
     LLM_TEMPERATURE: float = 0.2
 
+    # ── Recovery engine ──
+    # In-process loop that generates follow-up tasks every 60 s (off by default; tests never enable it)
+    ENABLE_SCHEDULER: bool = False
+
     # ── AWS (legacy Bedrock provider) ──
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
