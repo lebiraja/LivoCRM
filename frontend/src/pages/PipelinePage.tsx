@@ -1,42 +1,26 @@
-import { useEffect, useState, useCallback } from "react";
-import { motion } from "framer-motion";
-import {
-  Plus,
-  DollarSign,
-  GripVertical,
-  User,
-} from "lucide-react";
-
-
+import { useCallback, useEffect, useState, type DragEvent } from "react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { dealsApi } from "@/api/deals";
 import type { Deal, DealCreate, DealStage } from "@/types";
 import { cn } from "@/lib/utils";
 import { formatINR } from "@/lib/format";
+import { notifyApiError } from "@/lib/notifyError";
 
 // Static pipeline stages – the API has no stages endpoint
-const STAGE_DEFS: { id: DealStage; label: string; color: string }[] = [
-  { id: "lead",        label: "Lead",        color: "#6366F1" },
-  { id: "qualified",  label: "Qualified",   color: "#06B6D4" },
-  { id: "proposal",   label: "Proposal",    color: "#10B981" },
-  { id: "negotiation",label: "Negotiation", color: "#F59E0B" },
-  { id: "closed_won", label: "Closed ✓",   color: "#22C55E" },
-  { id: "closed_lost",label: "Closed ✗",   color: "#EF4444" },
+const STAGE_DEFS: { id: DealStage; label: string }[] = [
+  { id: "lead", label: "Lead" },
+  { id: "qualified", label: "Qualified" },
+  { id: "proposal", label: "Proposal" },
+  { id: "negotiation", label: "Negotiation" },
+  { id: "closed_won", label: "Closed ✓" },
+  { id: "closed_lost", label: "Closed ✗" },
 ];
-
-
-
 
 const EMPTY_FORM: DealCreate = {
   title: "",
@@ -46,57 +30,72 @@ const EMPTY_FORM: DealCreate = {
   notes: "",
 };
 
-export default function PipelinePage() {
+export function PipelinePage() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<DealStage | null>(null);
+  const [announcement, setAnnouncement] = useState("");
   const [form, setForm] = useState<DealCreate>({ ...EMPTY_FORM });
 
   const loadData = useCallback(async () => {
-    setLoading(true);
     try {
       const response = await dealsApi.list();
       setDeals(response.items);
-    } catch {
-      toast.error("Failed to load deals");
-      setDeals([]);
+      setLoadError(false);
+    } catch (error) {
+      setLoadError(true);
+      notifyApiError(error);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
-  const getDealsForStage = (stage: DealStage) =>
-    deals.filter((d) => d.stage === stage);
+  const getDealsForStage = (stage: DealStage) => deals.filter((d) => d.stage === stage);
 
   const getStageTotal = (stage: DealStage) =>
     getDealsForStage(stage).reduce((sum, d) => sum + d.value, 0);
 
+  // Used by both drag-and-drop and the per-card "Move to" select (keyboard and touch)
+  const moveDeal = async (dealId: string, stage: DealStage) => {
+    const deal = deals.find((d) => d.id === dealId);
+    if (!deal || deal.stage === stage) return;
+
+    const previous = deal.stage;
+    const label = STAGE_DEFS.find((s) => s.id === stage)?.label ?? stage;
+    setDeals((prev) => prev.map((d) => (d.id === dealId ? { ...d, stage } : d)));
+    setAnnouncement(`${deal.title} moved to ${label}`);
+
+    try {
+      await dealsApi.moveStage(dealId, stage);
+    } catch (error) {
+      // Roll back to the stage the deal was in before the failed move
+      setDeals((prev) => prev.map((d) => (d.id === dealId ? { ...d, stage: previous } : d)));
+      setAnnouncement(`${deal.title} could not be moved`);
+      notifyApiError(error);
+    }
+  };
+
   // ── Drag & Drop ──────────────────────────────────────────────────────────
   const handleDragStart = (dealId: string) => setDraggedId(dealId);
-  const handleDragEnd = () => { setDraggedId(null); setDragOverStage(null); };
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDragOverStage(null);
+  };
 
-  const handleDragOver = (e: React.DragEvent, stage: DealStage) => {
+  const handleDragOver = (e: DragEvent, stage: DealStage) => {
     e.preventDefault();
     setDragOverStage(stage);
   };
 
-  const handleDrop = async (stage: DealStage) => {
-    if (!draggedId) return;
-    // Optimistic local update
-    setDeals((prev) =>
-      prev.map((d) => d.id === draggedId ? { ...d, stage } : d)
-    );
-    try {
-      await dealsApi.moveStage(draggedId, stage);
-    } catch {
-      toast.error("Failed to move deal");
-      // Revert on failure by reloading
-      loadData();
-    }
+  const handleDrop = (stage: DealStage) => {
+    if (draggedId) void moveDeal(draggedId, stage);
     setDraggedId(null);
     setDragOverStage(null);
   };
@@ -111,8 +110,8 @@ export default function PipelinePage() {
     try {
       const created = await dealsApi.create(payload);
       setDeals((prev) => [...prev, created]);
-    } catch {
-      toast.error("Failed to create deal. Please try again.");
+    } catch (error) {
+      notifyApiError(error);
       return; // Don't close dialog on failure
     }
     setDialogOpen(false);
@@ -120,124 +119,107 @@ export default function PipelinePage() {
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <div className="flex gap-4 overflow-x-auto">
-          {[...Array(6)].map((_, i) => (
-            <Skeleton key={i} className="h-96 w-64 shrink-0 rounded-xl" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-6"
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Pipeline</h1>
-          <p className="text-sm text-muted-foreground">
-            Drag deals between stages to update progress
-          </p>
+    <section aria-labelledby="pipeline-heading" className="space-y-6">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div className="space-y-1">
+          <h1 id="pipeline-heading" className="font-serif text-4xl leading-tight">
+            Pipeline
+          </h1>
+          <p className="text-sm text-muted-foreground">Drag a deal, or use its Move to menu</p>
         </div>
-        <Button size="sm" onClick={() => setDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
+        <Button onClick={() => setDialogOpen(true)}>
+          <Plus aria-hidden="true" />
           New Deal
         </Button>
-      </div>
+      </header>
 
-      {/* Kanban Board */}
-      <div className="flex gap-4 overflow-x-auto pb-4">
-        {STAGE_DEFS.map((stage) => {
-          const stageDeals = getDealsForStage(stage.id);
-          const total = getStageTotal(stage.id);
-          const isOver = dragOverStage === stage.id;
+      <p aria-live="polite" className="sr-only">
+        {announcement}
+      </p>
 
-          return (
-            <div
-              key={stage.id}
-              className={cn(
-                "flex w-64 shrink-0 flex-col rounded-xl border transition-all",
-                isOver
-                  ? "border-primary/50 bg-primary/5"
-                  : "border-border/50 bg-muted/20"
-              )}
-              onDragOver={(e) => handleDragOver(e, stage.id)}
-              onDrop={() => handleDrop(stage.id)}
-              onDragLeave={() => setDragOverStage(null)}
-            >
-              {/* Stage Header */}
-              <div className="flex items-center justify-between p-3 pb-2">
-                <div className="flex items-center gap-2">
-                  <div
-                    className="h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: stage.color }}
-                  />
-                  <span className="text-sm font-semibold">{stage.label}</span>
-                  <Badge variant="secondary" className="text-[10px]">
-                    {stageDeals.length}
-                  </Badge>
-                </div>
-                <span className="text-xs font-medium text-muted-foreground">
-                  {formatINR(total, { compact: true })}
-                </span>
-              </div>
+      {loading ? (
+        <div className="flex gap-3 overflow-hidden" aria-hidden="true">
+          {[0, 1, 2].map((item) => (
+            <Skeleton key={item} className="h-72 w-64 shrink-0 rounded-none" />
+          ))}
+        </div>
+      ) : loadError ? (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 border border-destructive/40 p-4">
+          <p className="min-w-0 text-sm">Deals could not be loaded.</p>
+          <Button variant="outline" onClick={() => void loadData()}>
+            Try again
+          </Button>
+        </div>
+      ) : (
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {STAGE_DEFS.map((stage) => {
+            const stageDeals = getDealsForStage(stage.id);
+            const total = getStageTotal(stage.id);
+            const isOver = dragOverStage === stage.id;
 
-              {/* Deals */}
-              <div className="flex flex-1 flex-col gap-2 p-2 pt-0">
-                {stageDeals.map((deal) => (
-                  <motion.div
-                    key={deal.id}
-                    layout
-                    draggable
-                    onDragStart={() => handleDragStart(deal.id)}
-                    onDragEnd={handleDragEnd}
-                    className={cn(
-                      "group cursor-grab rounded-lg border border-border/50 bg-card p-3 transition-all hover:border-border active:cursor-grabbing",
-                      draggedId === deal.id && "opacity-40"
-                    )}
-                  >
-                    <div className="flex items-start justify-between">
-                      <p className="text-sm font-medium leading-tight">
-                        {deal.title}
-                      </p>
-                      <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100" />
-                    </div>
-                    <div className="mt-2 flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <User className="h-3 w-3" />
-                        <span className="truncate max-w-[80px]">
-                          {deal.contact_id || "—"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 text-xs font-semibold text-emerald-500">
-                        <DollarSign className="h-3 w-3" />
-                        {formatINR(deal.value, { compact: true })}
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-
-                {/* Empty state */}
-                {stageDeals.length === 0 && (
-                  <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-border/30 p-6">
-                    <p className="text-xs text-muted-foreground">
-                      Drop deals here
-                    </p>
-                  </div>
+            return (
+              <div
+                key={stage.id}
+                className={cn(
+                  "flex w-64 shrink-0 flex-col border-t-2 transition-colors",
+                  isOver ? "border-primary" : "border-border"
                 )}
+                onDragOver={(e) => handleDragOver(e, stage.id)}
+                onDrop={() => handleDrop(stage.id)}
+                onDragLeave={() => setDragOverStage(null)}
+              >
+                <div className="flex items-baseline justify-between gap-2 py-3">
+                  <h2 className="min-w-0 break-words text-sm font-semibold">
+                    {stage.label}
+                    <span className="ml-2 font-normal text-muted-foreground tabular-nums">{stageDeals.length}</span>
+                  </h2>
+                  <span className="shrink-0 text-xs font-medium text-muted-foreground tabular-nums">
+                    {formatINR(total, { compact: true })}
+                  </span>
+                </div>
+
+                <ul className="flex flex-1 flex-col gap-2">
+                  {stageDeals.map((deal) => (
+                    <li
+                      key={deal.id}
+                      draggable
+                      onDragStart={() => handleDragStart(deal.id)}
+                      onDragEnd={handleDragEnd}
+                      className={cn(
+                        "grid min-w-0 cursor-grab gap-2 border-b border-border py-3 active:cursor-grabbing",
+                        draggedId === deal.id && "opacity-40"
+                      )}
+                    >
+                      <p className="min-w-0 break-words text-sm font-medium leading-snug">{deal.title}</p>
+                      <p className="text-sm tabular-nums text-foreground">{formatINR(deal.value)}</p>
+                      <label className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        Move to
+                        <select
+                          aria-label={`Move ${deal.title} to stage`}
+                          value={deal.stage}
+                          onChange={(event) => void moveDeal(deal.id, event.target.value as DealStage)}
+                          className="h-11 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-base text-foreground md:h-8 md:text-sm"
+                        >
+                          {STAGE_DEFS.map((option) => (
+                            <option key={option.id} value={option.id}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </li>
+                  ))}
+
+                  {stageDeals.length === 0 && (
+                    <li className="py-6 text-xs text-muted-foreground">Drop deals here</li>
+                  )}
+                </ul>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* New Deal Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -247,43 +229,33 @@ export default function PipelinePage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Deal Title</Label>
+              <Label htmlFor="deal-title">Deal Title</Label>
               <Input
+                id="deal-title"
                 value={form.title}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, title: e.target.value }))
-                }
+                onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
                 placeholder="Enterprise License"
-                className="bg-muted/30"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Value (₹)</Label>
+                <Label htmlFor="deal-value">Value (₹)</Label>
                 <Input
+                  id="deal-value"
                   type="number"
+                  inputMode="numeric"
                   value={form.value || ""}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      value: Number(e.target.value),
-                    }))
-                  }
+                  onChange={(e) => setForm((prev) => ({ ...prev, value: Number(e.target.value) }))}
                   placeholder="50000"
-                  className="bg-muted/30"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Stage</Label>
+                <Label htmlFor="deal-stage">Stage</Label>
                 <select
+                  id="deal-stage"
                   value={form.stage}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      stage: e.target.value as DealStage,
-                    }))
-                  }
-                  className="w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                  onChange={(e) => setForm((prev) => ({ ...prev, stage: e.target.value as DealStage }))}
+                  className="h-11 w-full rounded-md border border-input bg-background px-3 text-base md:h-9 md:text-sm"
                 >
                   {STAGE_DEFS.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -294,14 +266,12 @@ export default function PipelinePage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Notes</Label>
-              <textarea
+              <Label htmlFor="deal-notes">Notes</Label>
+              <Textarea
+                id="deal-notes"
                 value={form.notes ?? ""}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, notes: e.target.value }))
-                }
+                onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
                 rows={3}
-                className="w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
             <div className="flex justify-end gap-2">
@@ -315,6 +285,6 @@ export default function PipelinePage() {
           </div>
         </DialogContent>
       </Dialog>
-    </motion.div>
+    </section>
   );
 }

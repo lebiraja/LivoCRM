@@ -27,13 +27,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen bg-surface items-center justify-center p-4">
-      {/* Floating orbs */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-primary/5 blur-[120px]" />
-        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-cyan/5 blur-[120px]" />
-      </div>
-
+    <div className="relative flex min-h-dvh items-center justify-center bg-background p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -42,7 +36,7 @@ export default function LoginPage() {
       >
         {/* Header */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary glow-indigo">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary">
             <Sparkles className="h-7 w-7 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>

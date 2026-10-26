@@ -14,38 +14,36 @@ export function ConfirmationCard({ confirmation, onConfirm, onDismiss }: Props) 
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: "auto" }}
       exit={{ opacity: 0, height: 0 }}
-      className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm"
+      className="mt-3 min-w-0 border-l-2 border-warning bg-card p-4"
     >
       {/* Header */}
-      <div className="flex items-center gap-2 text-amber-700">
-        <AlertCircle size={16} />
-        <span className="text-xs font-semibold uppercase tracking-wide">
-          Confirm Action
-        </span>
+      <div className="flex items-center gap-2 text-warning">
+        <AlertCircle size={16} aria-hidden="true" />
+        <span className="text-xs font-semibold tracking-wide uppercase">Confirm Action</span>
       </div>
 
       {/* Message */}
-      <p className="mt-2 text-sm text-amber-900">{confirmation.message}</p>
+      <p className="mt-2 text-sm break-words">{confirmation.message}</p>
 
       {/* Action details */}
-      <div className="mt-2 rounded-lg bg-white/60 p-2 text-xs text-amber-800 font-mono">
-        <span className="font-semibold">{confirmation.entity_type}</span>{" "}
-        <span className="opacity-70">→ {confirmation.intent}</span>
+      <div className="mt-2 rounded-md bg-muted p-2 font-mono text-xs break-words text-muted-foreground">
+        <span className="font-semibold text-foreground">{confirmation.entity_type}</span>{" "}
+        <span>→ {confirmation.intent}</span>
       </div>
 
       {/* Buttons */}
-      <div className="mt-3 flex gap-2">
+      <div className="mt-3 flex flex-wrap gap-2">
         <button
           onClick={onConfirm}
-          className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-emerald-700 transition-colors"
+          className="inline-flex min-h-11 items-center gap-1 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 md:min-h-8"
         >
-          <Check size={14} /> Confirm
+          <Check size={14} aria-hidden="true" /> Confirm
         </button>
         <button
           onClick={onDismiss}
-          className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm ring-1 ring-gray-200 hover:bg-gray-50 transition-colors"
+          className="inline-flex min-h-11 items-center gap-1 rounded-md border border-border bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted md:min-h-8"
         >
-          <X size={14} /> Dismiss
+          <X size={14} aria-hidden="true" /> Dismiss
         </button>
       </div>
     </motion.div>

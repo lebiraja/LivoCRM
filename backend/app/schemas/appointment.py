@@ -40,6 +40,7 @@ class AppointmentRead(BaseModel):
     id: UUID
     user_id: UUID
     contact_id: UUID
+    contact_name: str = ""
     starts_at: datetime
     fee_inr: Decimal
     status: AppointmentStatus
