@@ -4,6 +4,7 @@ Version history for the IA3 build of LivoCRM. Newest on top. Bump the version an
 
 | Version | Date | Summary |
 |---|---|---|
+| v0.6.0-docs | 2026-10-26 | Phase 4: current docs, archived old docs, report outlines. |
 | v0.5.0-ui | 2026-10-26 | Phases 2, 3, 6 merged: clinic engine, Ledger UI, AWS artifacts. 232 backend + 31 frontend + 38 cloud tests. |
 | v0.4.0-clinic | 2026-10-26 | Gate 2: appointments, recovery engine, drafts, seed demo. |
 | v0.3.0-groq | 2026-10-26 | Gate 1 (lean): Groq provider, multi-key pool, AI health endpoint, 161 backend tests. |

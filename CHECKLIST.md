@@ -35,7 +35,7 @@ Master checklist for the IA3 build. Tick items as they are verified, not when st
 ## 5. Quality
 - [x] pytest 232 (85%), vitest 31; [ ] Playwright smoke not done
 - [ ] `docker compose up` clean from scratch, healthchecks green
-- [ ] Docs in `docs/` match the code (use `docs-keeper`)
+- [x] Docs in `docs/` written from the code (re-verify numbers before submission)
 
 ## 6. IA3 deliverables
 - [ ] Project report
