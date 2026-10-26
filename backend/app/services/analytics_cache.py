@@ -1,8 +1,7 @@
 """In-memory analytics cache with async recompute.
 
-Stores pre-computed dashboard stats so the WebSocket endpoint can push
-snapshots instantly.  Recomputation runs on a timer or can be triggered
-on-demand after entity mutations.
+Recomputes a user's dashboard stats on demand after entity mutations so
+the dashboard WebSocket can push the fresh snapshot.
 """
 
 from __future__ import annotations
@@ -24,19 +23,8 @@ class AnalyticsCache:
 
     def __init__(self) -> None:
         self._cache: dict[str, dict] = {}
-        self._last_computed: dict[str, datetime] = {}
-        self._ttl = timedelta(seconds=30)
 
     # -- public API --------------------------------------------------------
-
-    async def get(self, user_id: str | UUID) -> dict:
-        """Return cached stats, recomputing if stale."""
-        uid = str(user_id)
-        now = datetime.now(timezone.utc)
-        last = self._last_computed.get(uid)
-        if last is None or (now - last) > self._ttl:
-            await self._recompute(uid)
-        return self._cache.get(uid, self._empty())
 
     async def invalidate(self, user_id: str | UUID) -> dict:
         """Force recompute and return fresh stats."""
@@ -51,7 +39,6 @@ class AnalyticsCache:
         async with async_session_factory() as db:
             stats = await self._query_stats(db, user_id)
         self._cache[user_id] = stats
-        self._last_computed[user_id] = datetime.now(timezone.utc)
 
     @staticmethod
     async def _query_stats(db: AsyncSession, user_id: str) -> dict:
@@ -98,18 +85,6 @@ class AnalyticsCache:
             "win_rate": round(won_deals / total_deals * 100, 1) if total_deals else 0.0,
             "recent_activities": recent_activities,
             "computed_at": datetime.now(timezone.utc).isoformat(),
-        }
-
-    @staticmethod
-    def _empty() -> dict:
-        return {
-            "total_contacts": 0,
-            "total_deals": 0,
-            "pipeline_value": 0.0,
-            "won_deals": 0,
-            "win_rate": 0.0,
-            "recent_activities": 0,
-            "computed_at": None,
         }
 
 

@@ -19,9 +19,6 @@ pandas==2.2.0
 joblib==1.4.0
 numpy==1.26.0
 
-# Misc
-python-dotenv==1.0.0
-
 # Redis
 redis==8.1.0
 
