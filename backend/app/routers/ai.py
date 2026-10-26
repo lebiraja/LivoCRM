@@ -14,6 +14,7 @@ from app.models.deal import Deal
 from app.models.user import User
 from app.services.bedrock_service import get_insights, llm_slots
 from app.services.lead_scoring import score_contact
+from app.services.rate_limit import rate_limit, user_key
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
@@ -49,7 +50,7 @@ async def lead_score(
     return {"contact_id": str(contact_id), **result}
 
 
-@router.post("/insights")
+@router.post("/insights", dependencies=[Depends(rate_limit("insights", 10, 3600, user_key))])
 async def insights(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),

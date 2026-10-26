@@ -32,6 +32,7 @@ from app.services.session_naming import generate_session_title
 from app.routers.websocket import push_ai_typing, push_dashboard_update, push_entity_created
 from app.services.analytics_cache import analytics_cache
 from app.services.bedrock_service import llm_slots
+from app.services.rate_limit import rate_limit, user_key
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +166,11 @@ async def delete_session(
 
 # ── Send message ────────────────────────────────────────────────────────────
 
-@router.post("/sessions/{session_id}/message", response_model=ChatSendResponse)
+@router.post(
+    "/sessions/{session_id}/message",
+    response_model=ChatSendResponse,
+    dependencies=[Depends(rate_limit("chat", 30, 60, user_key))],
+)
 async def send_message(
     session_id: UUID,
     body: ChatMessageSend,

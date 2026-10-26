@@ -29,4 +29,5 @@ COPY . .
 RUN python ml/generate_data.py && python ml/train_scorer.py
 
 # Run migrations then start server
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# --proxy-headers: client IP comes from nginx's X-Forwarded-For (backend is reachable only via nginx)
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"]

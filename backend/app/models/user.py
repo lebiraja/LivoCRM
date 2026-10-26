@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, String, Text, text
+from sqlalchemy import CheckConstraint, DateTime, Index, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -39,4 +39,5 @@ class User(Base):
             "plan IN ('free','pro','enterprise')",
             name="ck_users_plan"
         ),
+        Index("uq_users_email_lower", text("lower(email)"), unique=True),
     )

@@ -14,6 +14,20 @@ _Findings come from `docs/plan/01-code-audit.md` and `docs/plan/02-security-revi
 - **Finding ref:** ID from docs/plan/
 ```
 
+## 2026-10-26 · Weak registration and login hygiene
+- **Symptom:** 3-character passwords accepted; `Bob@x.io` and `bob@x.io` could both register; a duplicate email returned "Email already registered" (account enumeration) and a parallel duplicate raised an unhandled `IntegrityError` (500); unknown-email logins returned faster than wrong-password logins; a failure between the user commit and stage seeding left a user without pipeline stages.
+- **Root cause:** `password: str` with no bounds (bcrypt ignores bytes past 72); emails stored as typed; check-then-insert in `register`; `login` skipped bcrypt when the user was missing; two commits in `register`.
+- **Fix:** password 10-72 UTF-8 bytes and lower-cased `NormalizedEmail` (`backend/app/schemas/user.py:10,20`); migration `0008_lower_email_unique.py` lower-cases rows and adds unique index on `lower(email)` (also in `models/user.py`); `register` flushes and maps `IntegrityError` to a generic 409, then seeds stages in the same transaction (`backend/app/routers/auth.py:24-42`); `login` always runs bcrypt, against `DUMMY_HASH` for unknown users (`auth.py:49`, `services/auth_service.py:25`).
+- **Verification:** `tests/test_auth.py` (`test_register_case_insensitive_duplicate`, `test_register_password_policy[6 cases]`, `test_lower_email_unique_index`, `test_login_ok_case_insensitive`, `test_login_unknown_user_does_hash`) failed before, pass after; `tests/test_migrations.py` round-trips 0008.
+- **Finding ref:** SEC-12, CA-14
+
+## 2026-10-26 · No rate limiting on login, register, chat or insights
+- **Symptom:** unlimited login attempts (credential stuffing), account spam and unbounded LLM spend through chat and insights; all clients appeared as the nginx IP.
+- **Root cause:** no limiter anywhere; uvicorn started without `--proxy-headers`.
+- **Fix:** `backend/app/services/rate_limit.py` (Redis fixed window, dependency factory, 429 + `Retry-After`, fails open with a warning) on login 5/min per IP+email (`routers/auth.py:45`), register 3/h per IP (`auth.py:22`), chat 30/min per user (`routers/chat.py:172`), insights 10/h per user (`routers/ai.py:53`); shared client `services/redis_client.py`; nginx `limit_req` zones `auth` 10 r/min and `api` 20 r/s (`nginx/nginx.conf`); `--proxy-headers --forwarded-allow-ips='*'` (`backend/Dockerfile:33`).
+- **Verification:** `test_rate_limit_login` (6th → 429, Retry-After ≤ 60, key TTL set), `test_rate_limit_login_is_per_email`, `test_rate_limit_register`, `test_rate_limit_chat_user_budget`, `test_rate_limit_insights`, `test_rate_limit_fails_open` failed before, pass after; `nginx -t` ok.
+- **Finding ref:** SEC-03
+
 ## 2026-10-26 · Chat held a pooled DB connection across every LLM round-trip
 - **Symptom:** with a 2-connection pool, 6 parallel slow chat messages failed with `QueuePool limit of size 2 overflow 0 reached` (500s); ~30 concurrent chats would starve every endpoint in production (pool 10+20).
 - **Root cause:** `send_message` ran its first query, which opened a transaction, then called the orchestrator (up to 3 LLM calls) before committing, so the connection stayed checked out for the whole LLM time.

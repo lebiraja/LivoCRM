@@ -21,6 +21,10 @@ def verify_password(raw: str, hashed: str) -> bool:
         return False
 
 
+# Checked against when the email is unknown so login timing does not reveal accounts
+DUMMY_HASH = hash_password("dummy-password-for-timing")
+
+
 # ── JWT ────────────────────────────────────────────────────────────────
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:

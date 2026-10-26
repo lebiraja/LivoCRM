@@ -1,15 +1,27 @@
 """User-related Pydantic schemas."""
 
 from datetime import datetime
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+# Emails are stored and compared lower-cased (unique index on lower(email))
+NormalizedEmail = Annotated[EmailStr, AfterValidator(str.lower)]
 
 
 class UserCreate(BaseModel):
-    email: EmailStr
+    email: NormalizedEmail
     password: str
-    full_name: str = ""
+    full_name: str = Field("", max_length=255)
+
+    @field_validator("password")
+    @classmethod
+    def password_length(cls, value: str) -> str:
+        # bcrypt only uses the first 72 bytes, so longer passwords are rejected, not truncated
+        if not 10 <= len(value.encode("utf-8")) <= 72:
+            raise ValueError("Password must be 10 to 72 bytes long")
+        return value
 
 
 class UserRead(BaseModel):
@@ -28,5 +40,5 @@ class Token(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: NormalizedEmail
     password: str

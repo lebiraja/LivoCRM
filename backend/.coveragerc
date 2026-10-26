@@ -1,0 +1,4 @@
+[run]
+# SQLAlchemy's async layer runs on greenlets; without this, lines after DB awaits look uncovered
+concurrency = thread,greenlet
+source = app
