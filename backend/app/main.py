@@ -6,6 +6,7 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import DataError, IntegrityError
 
 from app.routers import (
     auth_router,
@@ -49,6 +50,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Database error mapping (no SQL or values in responses) ──────────────────
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request: Request, exc: IntegrityError) -> JSONResponse:
+    """Unique/foreign-key/check violations that validation could not catch up front."""
+    logger.info("Integrity error on %s %s", request.method, request.url.path)
+    return JSONResponse(status_code=409, content={"detail": "Conflicts with existing data"})
+
+
+@app.exception_handler(DataError)
+async def data_error_handler(request: Request, exc: DataError) -> JSONResponse:
+    """Values the database rejects (out of range, too long, malformed)."""
+    logger.info("Data error on %s %s", request.method, request.url.path)
+    return JSONResponse(status_code=422, content={"detail": "Invalid data"})
+
 
 # ── Global Exception Handler ────────────────────────────────────────────────
 @app.exception_handler(Exception)

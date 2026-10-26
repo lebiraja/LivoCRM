@@ -14,8 +14,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-DealStage = Literal["lead", "qualified", "proposal", "negotiation", "closed_won", "closed_lost"]
-ActivityType = Literal["call", "email", "meeting", "note", "task"]
+from app.schemas.activity import ActivityType
+from app.schemas.deal import DealStage
 
 Name = Annotated[str, Field(min_length=1, max_length=255)]
 OptionalName = Annotated[str, Field(max_length=255)]

@@ -8,9 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db, get_current_user
 from app.models.activity import Activity
+from app.models.contact import Contact
+from app.models.deal import Deal
 from app.models.user import User
 from app.schemas import PaginatedResponse
 from app.schemas.activity import ActivityCreate, ActivityRead
+from app.services.ownership import require_owned
 
 router = APIRouter(prefix="/activities", tags=["Activities"])
 
@@ -68,6 +71,10 @@ async def create_activity(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    if body.contact_id:
+        await require_owned(db, Contact, body.contact_id, user)
+    if body.deal_id:
+        await require_owned(db, Deal, body.deal_id, user)
     activity = Activity(**body.model_dump(), user_id=user.id)
     db.add(activity)
     await db.commit()

@@ -3,17 +3,22 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, Field
+
+StageName = Annotated[str, Field(min_length=1, max_length=100)]
+Position = Annotated[int, Field(ge=0, le=1000)]
 
 
 class PipelineStageCreate(BaseModel):
-    name: str
-    position: int = 0
+    name: StageName
+    position: Position = 0
 
 
 class PipelineStageUpdate(BaseModel):
-    name: str | None = None
-    position: int | None = None
+    name: StageName | None = None
+    position: Position | None = None
 
 
 class PipelineStageRead(BaseModel):

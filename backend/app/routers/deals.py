@@ -8,16 +8,18 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db, get_current_user
+from app.models.contact import Contact
 from app.models.deal import Deal
 from app.models.user import User
 from app.schemas import PaginatedResponse
-from app.schemas.deal import DealCreate, DealUpdate, DealRead
+from app.schemas.deal import DealCreate, DealStage, DealUpdate, DealRead
+from app.services.ownership import require_owned
 
 router = APIRouter(prefix="/deals", tags=["Deals"])
 
 
 class StageUpdate(BaseModel):
-    stage: str
+    stage: DealStage
 
 
 @router.get("/", response_model=PaginatedResponse[DealRead])
@@ -71,6 +73,8 @@ async def create_deal(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    if body.contact_id:
+        await require_owned(db, Contact, body.contact_id, user)
     deal = Deal(**body.model_dump(), user_id=user.id)
     db.add(deal)
     await db.commit()
@@ -89,6 +93,8 @@ async def update_deal(
     deal = result.scalar_one_or_none()
     if not deal:
         raise HTTPException(status_code=404, detail="Deal not found")
+    if body.contact_id:
+        await require_owned(db, Contact, body.contact_id, user)
 
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(deal, field, value)

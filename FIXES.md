@@ -14,6 +14,27 @@ _Findings come from `docs/plan/01-code-audit.md` and `docs/plan/02-security-revi
 - **Finding ref:** ID from docs/plan/
 ```
 
+## 2026-10-26 · Token with a non-UUID `sub` caused a 500
+- **Symptom:** a validly signed token whose `sub` was not a UUID (or empty) made every authenticated route return 500.
+- **Root cause:** `UUID(user_id)` in `get_current_user` raised `ValueError` outside any handler.
+- **Fix:** parse `sub` inside `try/except ValueError` and answer 401 (`backend/app/dependencies.py:35`).
+- **Verification:** `tests/test_validation.py::test_bad_sub_is_401` (non-UUID, empty, missing, unknown user).
+- **Finding ref:** SEC-22
+
+## 2026-10-26 · Invalid input reached the database and came back as 500s
+- **Symptom:** `stage="won"`, `status="open"`, `type="sms"`, a 256-char name, negative or 3-decimal money, `null` for NOT NULL fields, a duplicate pipeline-stage name or an int32-overflowing position all produced 500s; nginx accepted 20 MB bodies.
+- **Root cause:** request schemas used free-text `str`, unbounded strings and lists, `float` money and `str` email; no handler for `IntegrityError`/`DataError`.
+- **Fix:** bounded, typed schemas: `Literal` stage/status/type, `Decimal` money matching `Numeric(12,2)`, `EmailStr | ""`, length and list caps, explicit `null` rejected on NOT NULL update fields (`backend/app/schemas/contact.py`, `deal.py`, `activity.py`, `pipeline.py`; `StageUpdate` in `routers/deals.py`); contact search capped at 100 chars; `IntegrityError` -> 409 and `DataError` -> 422 with generic bodies (`backend/app/main.py:56,63`); `client_max_body_size 1m` (`nginx/nginx.conf:13`). `DealRead.value` stays a JSON number for the frontend.
+- **Verification:** `test_invalid_payloads_return_422[15 cases]`, `test_invalid_deal_update_returns_422[5]`, `test_invalid_stage_move_returns_422`, `test_invalid_contact_update_returns_422[3]`, `test_duplicate_stage_name_is_409`, `test_db_error_handlers`; `nginx -t` ok.
+- **Finding ref:** SEC-14, CA-21
+
+## 2026-10-26 · Records could reference another tenant's contact or deal
+- **Symptom:** user B could create or update a deal, or log an activity, pointing at user A's contact or deal UUID.
+- **Root cause:** `contact_id`/`deal_id` from the body went straight into the row; only the FK existence was checked by Postgres.
+- **Fix:** `require_owned()` returns 404 unless the referenced row belongs to the caller (`backend/app/services/ownership.py`), used in `routers/deals.py:77,97` and `routers/activities.py:75,77`.
+- **Verification:** `tests/test_tenancy.py::test_cross_tenant_fk_reference_rejected[4 cases]` failed before (2xx), 404 after; `test_own_fk_reference_allowed` still 201.
+- **Finding ref:** SEC-09
+
 ## 2026-10-26 · Chat events published before the entity was committed
 - **Symptom:** dashboard listeners got `entity_created` for rows that could still roll back, and the analytics recompute (separate session) could not see the new row.
 - **Root cause:** `push_entity_created` and `analytics_cache.invalidate` ran before `db.commit()` in `send_message`.

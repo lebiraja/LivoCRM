@@ -19,7 +19,7 @@ router = APIRouter(prefix="/contacts", tags=["Contacts"])
 async def list_contacts(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    search: str | None = None,
+    search: str | None = Query(None, max_length=100),
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
