@@ -1,16 +1,21 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
-import DashboardPage from "@/pages/DashboardPage";
-import ContactsPage from "@/pages/ContactsPage";
-import PipelinePage from "@/pages/PipelinePage";
+import { TodayPage } from "@/pages/TodayPage";
+import { AppointmentsPage } from "@/pages/AppointmentsPage";
+import { ContactsPage } from "@/pages/ContactsPage";
+import { PipelinePage } from "@/pages/PipelinePage";
+import { SettingsPage } from "@/pages/SettingsPage";
 import ChatPage from "@/pages/ChatPage";
-import AnalyticsPage from "@/pages/AnalyticsPage";
-import SettingsPage from "@/pages/SettingsPage";
 import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
 import { useAuthStore } from "@/stores/authStore";
+
+// Reports pulls in recharts, so it is split out of the entry chunk
+const ReportsPage = lazy(() =>
+  import("@/pages/ReportsPage").then((module) => ({ default: module.ReportsPage }))
+);
 
 /** Redirect to /login if not authenticated */
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -65,11 +70,20 @@ function App() {
             </PrivateRoute>
           }
         >
-          <Route path="/" element={<DashboardPage />} />
+          <Route path="/" element={<TodayPage />} />
+          <Route path="/appointments" element={<AppointmentsPage />} />
           <Route path="/contacts" element={<ContactsPage />} />
           <Route path="/pipeline" element={<PipelinePage />} />
           <Route path="/chat" element={<ChatPage />} />
-          <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route
+            path="/reports"
+            element={
+              <Suspense fallback={null}>
+                <ReportsPage />
+              </Suspense>
+            }
+          />
+          <Route path="/analytics" element={<Navigate to="/reports" replace />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
 

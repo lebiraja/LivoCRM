@@ -1,324 +1,128 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
-import {
-  User,
-  Bell,
-  Palette,
-  Shield,
-  Mail,
-  Moon,
-  Sun,
-} from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useEffect, useState, type ReactNode } from "react";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { LanguageToggle } from "@/components/layout/LanguageToggle";
+import { aiApi } from "@/api/ai";
+import { useT } from "@/i18n";
+import type { AIHealth } from "@/lib/api-schemas";
+import { notifyApiError } from "@/lib/notifyError";
 import { useAuthStore } from "@/stores/authStore";
+import { useThemeStore, type Theme } from "@/stores/themeStore";
 
-type Tab = "profile" | "notifications" | "appearance" | "security";
+const themes: Theme[] = ["system", "light", "dark"];
 
-const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: "profile", label: "Profile", icon: User },
-  { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "appearance", label: "Appearance", icon: Palette },
-  { id: "security", label: "Security", icon: Shield },
-];
+function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+  return (
+    <section aria-labelledby={id} className="space-y-3 border-t border-border py-6">
+      <h2 id={id} className="font-serif text-xl">
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
 
-export default function SettingsPage() {
+export function SettingsPage() {
+  const t = useT();
   const user = useAuthStore((s) => s.user);
-  const [activeTab, setActiveTab] = useState<Tab>("profile");
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
-  const [notifications, setNotifications] = useState({
-    email_deals: true,
-    email_contacts: false,
-    email_digest: true,
-    push_deals: true,
-    push_tasks: true,
-  });
+  const theme = useThemeStore((s) => s.theme);
+  const setTheme = useThemeStore((s) => s.setTheme);
+  const [health, setHealth] = useState<AIHealth | null>(null);
+  const [healthError, setHealthError] = useState(false);
 
-  const toggleTheme = (t: "light" | "dark") => {
-    setTheme(t);
-    document.documentElement.classList.toggle("dark", t === "dark");
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setHealth(await aiApi.health());
+      } catch (error) {
+        setHealthError(true);
+        notifyApiError(error);
+      }
+    };
+    void load();
+  }, []);
+
+  const handleThemeChange = (value: string) => {
+    const next = themes.find((item) => item === value);
+    if (next) setTheme(next);
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-6"
-    >
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage your account and preferences
-        </p>
-      </div>
+    <div className="mx-auto w-full max-w-[680px] space-y-2">
+      <h1 className="font-serif text-4xl leading-tight">{t("settings.title")}</h1>
 
-      <div className="flex flex-col gap-6 lg:flex-row">
-        {/* Sidebar */}
-        <nav className="flex lg:w-52 lg:flex-col">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
-                  activeTab === tab.id
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </nav>
+      <Section id="settings-profile" title={t("settings.profile")}>
+        <dl className="grid min-w-0 gap-2 text-sm">
+          <div className="grid grid-cols-[6rem_1fr] gap-3">
+            <dt className="text-muted-foreground">{t("settings.name")}</dt>
+            <dd className="min-w-0 break-words">{user?.full_name}</dd>
+          </div>
+          <div className="grid grid-cols-[6rem_1fr] gap-3">
+            <dt className="text-muted-foreground">{t("settings.email")}</dt>
+            <dd className="min-w-0 break-all">{user?.email}</dd>
+          </div>
+        </dl>
+        <p className="text-sm text-muted-foreground">{t("settings.timezone")}</p>
+      </Section>
 
-        {/* Content */}
-        <div className="flex-1 space-y-6">
-          {activeTab === "profile" && (
-            <motion.div
-              key="profile"
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Profile Information</CardTitle>
-                  <CardDescription>
-                    Profile editing is not available yet
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="profile-name">Full name</Label>
-                    <Input
-                      id="profile-name"
-                      value={user?.full_name ?? ""}
-                      readOnly
-                      className="bg-muted/30"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="profile-email">Email</Label>
-                    <Input
-                      id="profile-email"
-                      value={user?.email ?? ""}
-                      readOnly
-                      className="bg-muted/30"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
+      <Section id="settings-language" title={t("settings.language")}>
+        <LanguageToggle />
+      </Section>
 
-          {activeTab === "notifications" && (
-            <motion.div
-              key="notifications"
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    Notification Preferences
-                  </CardTitle>
-                  <CardDescription>
-                    Notifications are not available yet
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div>
-                    <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
-                      <Mail className="h-4 w-4" />
-                      Email Notifications
-                    </h3>
-                    <div className="space-y-3">
-                      {([
-                        ["email_deals", "Deal updates", "When deals change stage or close"],
-                        ["email_contacts", "New contacts", "When new contacts are added"],
-                        ["email_digest", "Daily digest", "Daily summary of pipeline activity"],
-                      ] as const).map(([key, label, desc]) => (
-                        <label
-                          key={key}
-                          className="flex items-center justify-between rounded-lg border border-border/50 p-3"
-                        >
-                          <div>
-                            <p className="text-sm font-medium">{label}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {desc}
-                            </p>
-                          </div>
-                          <input
-                            type="checkbox"
-                            checked={notifications[key]}
-                            onChange={() =>
-                              setNotifications((n) => ({
-                                ...n,
-                                [key]: !n[key],
-                              }))
-                            }
-                            disabled
-                            className="h-4 w-4 accent-primary"
-                          />
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
-                      <Bell className="h-4 w-4" />
-                      Push Notifications
-                    </h3>
-                    <div className="space-y-3">
-                      {([
-                        ["push_deals", "Deal alerts", "Instant alerts for deal changes"],
-                        ["push_tasks", "Task reminders", "Reminders for upcoming tasks"],
-                      ] as const).map(([key, label, desc]) => (
-                        <label
-                          key={key}
-                          className="flex items-center justify-between rounded-lg border border-border/50 p-3"
-                        >
-                          <div>
-                            <p className="text-sm font-medium">{label}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {desc}
-                            </p>
-                          </div>
-                          <input
-                            type="checkbox"
-                            checked={notifications[key]}
-                            onChange={() =>
-                              setNotifications((n) => ({
-                                ...n,
-                                [key]: !n[key],
-                              }))
-                            }
-                            disabled
-                            className="h-4 w-4 accent-primary"
-                          />
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {activeTab === "appearance" && (
-            <motion.div
-              key="appearance"
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Appearance</CardTitle>
-                  <CardDescription>
-                    Customize the look and feel
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label className="mb-3 block">Theme</Label>
-                    <div className="flex gap-3">
-                      {([
-                        { id: "light" as const, icon: Sun, label: "Light" },
-                        { id: "dark" as const, icon: Moon, label: "Dark" },
-                      ]).map(({ id, icon: Icon, label }) => (
-                        <button
-                          key={id}
-                          onClick={() => toggleTheme(id)}
-                          className={cn(
-                            "flex items-center gap-2 rounded-lg border px-4 py-3 transition-all",
-                            theme === id
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border/50 text-muted-foreground hover:border-border"
-                          )}
-                        >
-                          <Icon className="h-4 w-4" />
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="mb-3 block">Accent Color</Label>
-                    <div className="flex gap-2">
-                      {[
-                        "#6366F1",
-                        "#06B6D4",
-                        "#10B981",
-                        "#F59E0B",
-                        "#F43F5E",
-                        "#A855F7",
-                      ].map((color) => (
-                        <button
-                          key={color}
-                          className="h-8 w-8 rounded-full border-2 border-transparent transition-all hover:scale-110 hover:border-foreground/20"
-                          style={{ backgroundColor: color }}
-                          onClick={() => {
-                            // In a real app, this would update CSS custom properties
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {activeTab === "security" && (
-            <motion.div
-              key="security"
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="space-y-4"
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Change Password</CardTitle>
-                  <CardDescription>
-                    Password change is not available yet
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Current Password</Label>
-                    <Input type="password" disabled className="bg-muted/30" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>New Password</Label>
-                    <Input type="password" disabled className="bg-muted/30" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Confirm New Password</Label>
-                    <Input type="password" disabled className="bg-muted/30" />
-                  </div>
-                  <Button disabled>
-                    <Shield className="mr-2 h-4 w-4" />
-                    Update Password
-                  </Button>
-                </CardContent>
-              </Card>
-
-            </motion.div>
-          )}
+      <Section id="settings-appearance" title={t("settings.appearance")}>
+        <div className="grid max-w-xs gap-2">
+          <Label htmlFor="settings-theme">{t("settings.appearance")}</Label>
+          <select
+            id="settings-theme"
+            value={theme}
+            onChange={(event) => handleThemeChange(event.target.value)}
+            className="h-11 w-full rounded-md border border-input bg-background px-3 text-base md:h-9 md:text-sm"
+          >
+            <option value="system">{t("settings.theme.system")}</option>
+            <option value="light">{t("settings.theme.light")}</option>
+            <option value="dark">{t("settings.theme.dark")}</option>
+          </select>
         </div>
-      </div>
-    </motion.div>
+      </Section>
+
+      <Section id="settings-ai" title={t("settings.aiHealth")}>
+        <p className="text-sm text-muted-foreground">{t("settings.aiHealthHelp")}</p>
+        {healthError ? (
+          <p role="alert" className="text-sm text-muted-foreground">
+            {t("settings.aiHealthUnavailable")}
+          </p>
+        ) : health && health.keys.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("settings.aiHealthEmpty")}</p>
+        ) : health ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-muted-foreground">
+                  <th scope="col" className="py-2 pr-3 font-medium">
+                    {t("settings.key")}
+                  </th>
+                  <th scope="col" className="py-2 pr-3 font-medium">
+                    {t("settings.state")}
+                  </th>
+                  <th scope="col" className="py-2 text-right font-medium">
+                    {t("settings.remainingTokens")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {health.keys.map((key) => (
+                  <tr key={key.key_id} className="border-b border-border">
+                    <td className="py-3 pr-3 font-mono break-all">{key.key_id}</td>
+                    <td className="py-3 pr-3 break-words">{key.state}</td>
+                    <td className="py-3 text-right tabular-nums">
+                      {key.remaining_tokens === null ? "—" : key.remaining_tokens.toLocaleString("en-IN")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </Section>
+    </div>
   );
 }
