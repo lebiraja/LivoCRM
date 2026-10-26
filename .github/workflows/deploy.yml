@@ -6,9 +6,9 @@
 
 name: deploy
 
+# Manual only until the AWS side exists (OIDC role, variables, EC2). Re-enable `push: branches: [main]` then.
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
