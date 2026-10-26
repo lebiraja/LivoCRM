@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import Any
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
 
 from app.config import settings
@@ -16,12 +18,18 @@ logger = logging.getLogger(__name__)
 # ── Shared Bedrock client (module-level lazy singleton) ─────────────────────
 _bedrock_client = None
 
+# Bound every call: boto3 defaults are 60 s timeouts with several retries
+_CLIENT_CONFIG = Config(connect_timeout=3, read_timeout=15, retries={"max_attempts": 2})
+
+# Caps concurrent LLM calls process-wide; async callers hold a slot around asyncio.to_thread()
+llm_slots = asyncio.Semaphore(8)
+
 
 def _get_client():
     global _bedrock_client
     if _bedrock_client is None:
         _bedrock_client = boto3.client(
-            "bedrock-runtime", region_name=settings.AWS_DEFAULT_REGION
+            "bedrock-runtime", region_name=settings.AWS_DEFAULT_REGION, config=_CLIENT_CONFIG
         )
     return _bedrock_client
 
@@ -178,7 +186,7 @@ def generate_fallback_insights(metrics: dict[str, Any]) -> list[str]:
 def get_insights(metrics: dict[str, Any]) -> tuple[list[str], str]:
     try:
         insights = generate_bedrock_insights(metrics)
-        return insights, f"bedrock:{settings.BEDROCK_LLM_MODEL}"
+        return insights, "ai"
     except BedrockServiceError as exc:
-        logger.warning("Bedrock insights failed, using fallback: %s", exc)
-        return generate_fallback_insights(metrics), "fallback:deterministic"
+        logger.warning("Bedrock insights failed, using fallback: %s", type(exc).__name__)
+        return generate_fallback_insights(metrics), "fallback"

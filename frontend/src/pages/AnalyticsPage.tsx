@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import {
   Users,
   Handshake,
-  DollarSign,
+  IndianRupee,
   TrendingUp,
   Sparkles,
 } from "lucide-react";
@@ -22,12 +22,14 @@ import {
   Bar,
   Cell,
 } from "recharts";
+import { toast } from "sonner";
 import { analyticsApi } from "@/api/analytics";
 import type {
   AnalyticsSummary,
   WinRate,
   Forecast,
 } from "@/types";
+import { formatINR } from "@/lib/format";
 
 const container = {
   hidden: { opacity: 0 },
@@ -49,15 +51,11 @@ function StatCard({
   value,
   icon: Icon,
   color,
-  prefix = "",
-  suffix = "",
 }: {
   title: string;
   value: number | string;
   icon: React.ElementType;
   color: string;
-  prefix?: string;
-  suffix?: string;
 }) {
   return (
     <motion.div variants={item}>
@@ -75,9 +73,7 @@ function StatCard({
                 {title}
               </p>
               <p className="text-2xl font-bold tracking-tight font-mono">
-                {prefix}
-                {typeof value === "number" ? value.toLocaleString() : value}
-                {suffix}
+                {typeof value === "number" ? value.toLocaleString("en-IN") : value}
               </p>
             </div>
             <div
@@ -111,8 +107,8 @@ export default function AnalyticsPage() {
         setSummary(summaryData);
         setWinRate(winRateData);
         setForecast(forecastData);
-      } catch (error) {
-        console.error("Failed to load analytics:", error);
+      } catch {
+        toast.error("Failed to load analytics");
       } finally {
         setLoading(false);
       }
@@ -177,19 +173,15 @@ export default function AnalyticsPage() {
           />
           <StatCard
             title="Pipeline Value"
-            value={summary.pipeline_value}
-            icon={DollarSign}
+            value={formatINR(summary.pipeline_value)}
+            icon={IndianRupee}
             color="#F59E0B"
-            prefix="$"
-            suffix="k"
           />
           <StatCard
             title="Won Value"
-            value={summary.won_value}
+            value={formatINR(summary.won_value)}
             icon={TrendingUp}
             color="#06B6D4"
-            prefix="$"
-            suffix="k"
           />
           <StatCard
             title="Activities"
@@ -253,9 +245,7 @@ export default function AnalyticsPage() {
           <Card>
             <CardHeader>
               <CardTitle>
-                Revenue Forecast: ${forecast.forecast.toLocaleString("en-US", {
-                  maximumFractionDigits: 0,
-                })}k
+                Revenue Forecast: {formatINR(forecast.forecast)}
               </CardTitle>
             </CardHeader>
             <CardContent>

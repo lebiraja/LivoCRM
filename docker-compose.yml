@@ -2,16 +2,15 @@
 services:
   # ── PostgreSQL ───────────────────────────────────────────────────────────
   db:
-    image: postgres:16-alpine
-    env_file: .env
+    image: postgres:16.15-alpine
+    # Only its own variables: no env_file, so app secrets never reach the DB container
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5435:5432"   # host 5435 — free (5432/5433 taken by other projects)
+    # NOT exposed to host — use the dev-profile pgAdmin (see docs/pgadmin_setup.md)
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -19,14 +18,23 @@ services:
     networks:
       - livocrm
 
-  # ── Redis (session cache + future pub/sub) ───────────────────────────────
+  # ── Redis (chat context, locks, rate limits, WS tickets) ─────────────────
   redis:
-    image: redis:7-alpine
-    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    image: redis:7.4.11-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_MAXMEMORY: ${REDIS_MAXMEMORY:-128mb}
+    command:
+      - sh
+      - -c
+      - >-
+        exec redis-server --save '' --appendonly no
+        --requirepass "$$REDIS_PASSWORD"
+        --maxmemory "$$REDIS_MAXMEMORY" --maxmemory-policy allkeys-lru
     volumes:
       - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
       interval: 5s
       retries: 5
     networks:
@@ -35,15 +43,24 @@ services:
 
   # ── FastAPI backend ──────────────────────────────────────────────────────
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      target: runtime
     env_file: .env
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
     networks:
       - livocrm
+    restart: unless-stopped
     # NOT exposed to host — nginx is the only entry point
 
   # ── React SPA (served by nginx inside the container) ────────────────────
@@ -51,8 +68,14 @@ services:
     build: ./frontend
     depends_on:
       - backend
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
     networks:
       - livocrm
+    restart: unless-stopped
     # NOT exposed to host — nginx reverse proxy serves it
 
   # ── Nginx reverse proxy (single public entry point) ─────────────────────
@@ -63,21 +86,30 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - frontend
-      - backend
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
     networks:
       - livocrm
     restart: unless-stopped
 
-  # ── pgAdmin 4 (database GUI) ──────────────────────────────────────────────
+  # ── pgAdmin 4 (database GUI, dev only) ───────────────────────────────────
+  # docker compose --profile dev up -d pgadmin
   pgadmin:
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:9.18
+    profiles: ["dev"]
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@livocrm.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
       PGADMIN_LISTEN_PORT: 80
     ports:
-      - "5050:80"        # http://localhost:5050
+      - "127.0.0.1:5050:80"   # http://127.0.0.1:5050 — this machine only
     depends_on:
       db:
         condition: service_healthy
@@ -87,6 +119,37 @@ services:
       - livocrm
     restart: unless-stopped
 
+  # ── Test profile: throwaway Postgres (tmpfs) + backend test image ────────
+  # docker compose --profile test run --rm --build backend-test pytest
+  db-test:
+    image: postgres:16.15-alpine
+    profiles: ["test"]
+    environment:
+      POSTGRES_DB: livocrm_test
+      # Throwaway tmpfs DB on an internal network with no published port
+      POSTGRES_HOST_AUTH_METHOD: trust
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d livocrm_test"]
+      interval: 2s
+      retries: 15
+    networks:
+      - livocrm-test
+
+  backend-test:
+    build:
+      context: ./backend
+      target: test
+    profiles: ["test"]
+    environment:
+      TEST_DATABASE_URL: postgresql+asyncpg://postgres@db-test:5432/livocrm_test
+    depends_on:
+      db-test:
+        condition: service_healthy
+    networks:
+      - livocrm-test
+
 volumes:
   pgdata:
   redisdata:
@@ -95,3 +158,5 @@ volumes:
 networks:
   livocrm:
     driver: bridge
+  livocrm-test:
+    internal: true

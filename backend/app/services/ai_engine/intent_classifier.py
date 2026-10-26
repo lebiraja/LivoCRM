@@ -58,7 +58,7 @@ def classify_intent(
             temperature=0.0,
         )
     except BedrockServiceError as exc:
-        logger.warning(f"Intent classification failed (BedrockServiceError): {exc}")
+        logger.warning("Intent classification failed: %s", type(exc).__name__)
         return ClassificationResult(intent=Intent.GENERAL_CHAT, confidence=0.0)
 
     try:
@@ -72,5 +72,6 @@ def classify_intent(
         intent = Intent(intent_str)
         return ClassificationResult(intent=intent, confidence=confidence)
     except (json.JSONDecodeError, ValueError, KeyError) as exc:
-        logger.warning("Could not parse intent response: %s — raw: %s", exc, raw[:200])
+        # Never log the reply itself: it can echo the user's message
+        logger.warning("Could not parse intent response: %s (%d chars)", type(exc).__name__, len(raw))
         return ClassificationResult(intent=Intent.GENERAL_CHAT, confidence=0.0)

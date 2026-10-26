@@ -1,16 +1,19 @@
 """Activity-related Pydantic schemas."""
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+ActivityType = Literal["call", "email", "meeting", "note", "task"]
 
 
 class ActivityCreate(BaseModel):
     contact_id: UUID | None = None
     deal_id: UUID | None = None
-    type: str = "note"
-    description: str
+    type: ActivityType = "note"
+    description: str = Field(min_length=1, max_length=5000)
     occurred_at: datetime
 
 

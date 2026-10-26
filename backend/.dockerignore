@@ -1,0 +1,15 @@
+# Never bake local secrets or caches into the image
+.env
+.env.*
+**/__pycache__
+**/*.py[cod]
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.coverage
+htmlcov
+.venv
+venv
+# Generated at build time by ml/generate_data.py and ml/train_scorer.py
+ml/*.pkl
+ml/*.csv

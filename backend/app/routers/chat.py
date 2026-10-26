@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,8 +21,8 @@ from app.models.contact import Contact
 from app.models.deal import Deal
 from app.models.activity import Activity
 from app.models.user import User
+from app.schemas.ai_actions import ACTION_MODELS, ActivityFields, ContactFields, DealFields
 from app.schemas.chat import (
-    ChatActionRead,
     ChatMessageRead,
     ChatMessageSend,
     ChatSendResponse,
@@ -28,10 +31,19 @@ from app.schemas.chat import (
     ConfirmationPayload,
 )
 from app.services.ai_engine.orchestrator import Orchestrator, OrchestratorResponse, SessionState
-from app.services.session_manager import clear_context, get_context, reset_context, _save_context
+from app.services.session_manager import (
+    SessionBusyError,
+    _save_context,
+    clear_context,
+    get_context,
+    reset_context,
+    session_lock,
+)
 from app.services.session_naming import generate_session_title
 from app.routers.websocket import push_ai_typing, push_dashboard_update, push_entity_created
 from app.services.analytics_cache import analytics_cache
+from app.services.bedrock_service import llm_slots
+from app.services.rate_limit import rate_limit, user_key
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +51,9 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
 
 # Singleton orchestrator (stateless — all state lives in SessionContext)
 _orchestrator = Orchestrator()
+
+# Strong references so fire-and-forget tasks are not garbage-collected mid-run
+_background_tasks: set[asyncio.Task[None]] = set()
 
 
 # ── Session management ──────────────────────────────────────────────────────
@@ -157,12 +172,16 @@ async def delete_session(
 
     await db.delete(session)
     await db.commit()
-    await clear_context(session_id)
+    await clear_context(user.id, session_id)
 
 
 # ── Send message ────────────────────────────────────────────────────────────
 
-@router.post("/sessions/{session_id}/message", response_model=ChatSendResponse)
+@router.post(
+    "/sessions/{session_id}/message",
+    response_model=ChatSendResponse,
+    dependencies=[Depends(rate_limit("chat", 30, 60, user_key))],
+)
 async def send_message(
     session_id: UUID,
     body: ChatMessageSend,
@@ -172,9 +191,9 @@ async def send_message(
     """Send a message to the AI and get a response.
 
     This is the main chat endpoint.  It:
-      1. Saves the user message to the DB
-      2. Runs the orchestrator to get an AI response
-      3. Saves the AI message to the DB
+      1. Verifies the session, then releases the DB connection
+      2. Runs the orchestrator off the event loop (no connection held)
+      3. Saves both messages in one short transaction
       4. If ready_to_save and state is SAVING, creates the CRM entity
       5. Returns both messages + orchestrator state
     """
@@ -188,75 +207,98 @@ async def send_message(
     session = result.scalar_one_or_none()
     if not session:
         raise HTTPException(status_code=404, detail="Chat session not found")
-
-    # 1. Save the user message
-    user_msg = ChatMessage(
-        session_id=session_id,
-        role="user",
-        content=body.message,
-    )
-    db.add(user_msg)
-
-    # 2. Run orchestrator (with typing indicator via WS)
-    await push_ai_typing(session_id, is_typing=True)
-    ctx = await get_context(session_id)
-    orch_response: OrchestratorResponse = _orchestrator.process_message(ctx, body.message)
-    await push_ai_typing(session_id, is_typing=False)
-
-    # Persist context to Redis so it survives restarts
-    await _save_context(session_id, ctx)
-
-    # 3. Save the AI message
-    ai_msg = ChatMessage(
-        session_id=session_id,
-        role="assistant",
-        content=orch_response.ai_message,
-        intent=orch_response.intent,
-    )
-    db.add(ai_msg)
-
-    # 4. If entering SAVING state, create the entity + push WS events
-    saved_entity_id = None
-    if orch_response.session_state == SessionState.SAVING and orch_response.ready_to_save:
-        saved_entity_id = await _save_entity(
-            db=db,
-            user_id=user.id,
-            session_id=session_id,
-            intent=orch_response.intent,
-            data=orch_response.extracted_data,
-        )
-        if saved_entity_id:
-            entity_type = _intent_to_entity(orch_response.intent)
-            await push_entity_created(
-                user.id, entity_type, saved_entity_id, orch_response.extracted_data
-            )
-            stats = await analytics_cache.invalidate(user.id)
-            await push_dashboard_update(user.id, stats)
-        # Transition to IDLE — preserve history + remember what was saved
-        await reset_context(
-            session_id,
-            last_saved_entity={
-                "type": _intent_to_entity(orch_response.intent),
-                "id": str(saved_entity_id) if saved_entity_id else None,
-                "data": orch_response.extracted_data,
-                "intent": orch_response.intent,
-            },
-        )
-
-    # ── Auto-naming: trigger on first exchange only ────────────────────────
-    # Check BEFORE committing new messages (pre-exchange snapshot)
-    is_first_exchange = session.title == "New Chat"
-
-    # Update session timestamp
-    session.updated_at = datetime.utcnow()
-
+    # Return the connection to the pool before the slow LLM round-trips
     await db.commit()
-    await db.refresh(user_msg)
-    await db.refresh(ai_msg)
+
+    try:
+        # One turn at a time per session: parallel "yes" messages must not both save (SEC-08)
+        async with session_lock(session_id):
+            # 2. Run orchestrator in a worker thread (with typing indicator via WS)
+            await push_ai_typing(session_id, is_typing=True)
+            ctx = await get_context(user.id, session_id)
+            async with llm_slots:
+                orch_response: OrchestratorResponse = await asyncio.to_thread(
+                    _orchestrator.process_message, ctx, body.message
+                )
+            await push_ai_typing(session_id, is_typing=False)
+
+            # 3. Save the user and AI messages
+            user_msg = ChatMessage(
+                session_id=session_id,
+                role="user",
+                content=body.message,
+            )
+            db.add(user_msg)
+            ai_msg = ChatMessage(
+                session_id=session_id,
+                role="assistant",
+                content=orch_response.ai_message,
+                intent=orch_response.intent,
+            )
+            db.add(ai_msg)
+
+            # 4. If entering SAVING state, validate and create the entity
+            outcome: SaveOutcome | None = None
+            if orch_response.session_state == SessionState.SAVING and orch_response.ready_to_save:
+                outcome = await _save_entity(
+                    db=db,
+                    user_id=user.id,
+                    session_id=session_id,
+                    intent=orch_response.intent,
+                    data=orch_response.extracted_data,
+                )
+                if not outcome.entity_id:
+                    # Nothing saved: ask the user to fix the rejected fields instead
+                    for field_name in outcome.bad_fields:
+                        ctx.collected_data.pop(field_name, None)
+                    ctx.state = SessionState.COLLECTING
+                    ctx.history[-1] = {"role": "assistant", "content": outcome.message}
+                    ai_msg.content = outcome.message
+                    orch_response.ai_message = outcome.message
+                    orch_response.session_state = SessionState.COLLECTING
+                    orch_response.ready_to_save = False
+
+            # ── Auto-naming: trigger on first exchange only ────────────────
+            # Check BEFORE committing new messages (pre-exchange snapshot)
+            is_first_exchange = session.title == "New Chat"
+
+            # Update session timestamp
+            session.updated_at = datetime.utcnow()
+
+            await db.commit()
+            await db.refresh(user_msg)
+            await db.refresh(ai_msg)
+
+            # Persist context to Redis only once the DB state it describes is committed
+            if outcome and outcome.entity_id:
+                # Transition to IDLE — preserve history + remember what was saved
+                await reset_context(
+                    user.id,
+                    session_id,
+                    ctx,
+                    last_saved_entity={
+                        "type": _intent_to_entity(orch_response.intent),
+                        "id": str(outcome.entity_id),
+                        "data": orch_response.extracted_data,
+                        "intent": orch_response.intent,
+                    },
+                )
+            else:
+                await _save_context(user.id, session_id, ctx)
+    except SessionBusyError:
+        raise HTTPException(status_code=409, detail="Still answering your previous message in this chat")
+
+    # 5. Publish only after commit so listeners never see a phantom entity (SEC-15)
+    if outcome and outcome.entity_id:
+        await push_entity_created(
+            user.id, _intent_to_entity(orch_response.intent), outcome.entity_id, orch_response.extracted_data
+        )
+        stats = await analytics_cache.invalidate(user.id)
+        await push_dashboard_update(user.id, stats)
 
     # Schedule background title generation (non-blocking, after commit)
     if is_first_exchange:
-        asyncio.create_task(
+        task = asyncio.create_task(
             _auto_name_session(
                 session_id=session_id,
                 user_id=user.id,
@@ -264,6 +306,8 @@ async def send_message(
                 ai_response=orch_response.ai_message,
             )
         )
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
 
     # Build confirmation payload if ready to save
     confirmation = None
@@ -352,9 +396,10 @@ async def _auto_name_session(
 
     try:
         # Run LLM call in a thread to avoid blocking the event loop
-        title = await asyncio.to_thread(
-            generate_session_title, user_message, ai_response
-        )
+        async with llm_slots:
+            title = await asyncio.to_thread(
+                generate_session_title, user_message, ai_response
+            )
 
         async with async_session_factory() as db:
             result = await db.execute(
@@ -368,7 +413,7 @@ async def _auto_name_session(
                 session.title = title
                 session.updated_at = datetime.utcnow()
                 await db.commit()
-                logger.info("Auto-named session %s → %r", session_id, title)
+                logger.info("Auto-named session %s", session_id)
     except Exception:
         logger.exception("Background session naming failed for %s", session_id)
 
@@ -390,6 +435,19 @@ def _intent_to_entity(intent: str) -> str:
 
 # ── Entity saving ──────────────────────────────────────────────────────────
 
+
+@dataclass
+class SaveOutcome:
+    entity_id: UUID | None
+    # When nothing was saved: what to tell the user, and which collected fields to drop
+    message: str = ""
+    bad_fields: list[str] = field(default_factory=list)
+
+
+class UnresolvedTarget(Exception):
+    """The record the user referred to does not exist or matches more than one row."""
+
+
 async def _save_entity(
     *,
     db: AsyncSession,
@@ -397,177 +455,151 @@ async def _save_entity(
     session_id: UUID,
     intent: str,
     data: dict,
-) -> UUID | None:
-    """Create a CRM entity from collected conversation data.
+) -> SaveOutcome:
+    """Validate AI-collected data, then write the CRM entity inside a savepoint.
 
-    Returns the new entity's UUID, or None on failure.
+    LLM output is untrusted (SEC-05): it must fit the intent's model in
+    app.schemas.ai_actions. A rejected value or an unknown target leaves the
+    request transaction usable, records a `failed` ChatAction and returns a
+    clarification for the user instead of a 500 (SEC-06).
     """
-    entity_type = "unknown"
-    entity_id = None
+    entity_type = _intent_to_entity(intent)
+    # `_entity_id` is set server-side for follow-up updates; the extractor never passes model ids
+    entity_ref = data.get("_entity_id")
+    fields = {k: v for k, v in data.items() if v is not None and k != "_entity_id"}
 
     try:
-        if intent == "ADD_CONTACT":
-            entity_type = "contact"
-            contact = Contact(
-                user_id=user_id,
-                name=data.get("name", ""),
-                email=data.get("email", ""),
-                phone=data.get("phone", ""),
-                company=data.get("company", ""),
-                notes=data.get("notes", ""),
-            )
-            db.add(contact)
-            await db.flush()
-            entity_id = contact.id
+        action = ACTION_MODELS[intent].model_validate(fields)
+        async with db.begin_nested():
+            entity_id = await _WRITERS[intent](db, user_id, session_id, action, entity_ref)
+        outcome = SaveOutcome(entity_id)
+    except ValidationError as exc:
+        bad_fields = sorted({str(err["loc"][0]) for err in exc.errors() if err["loc"]})
+        outcome = SaveOutcome(
+            None,
+            f"I couldn't save that {entity_type}: please check {', '.join(bad_fields)}. What should it be?",
+            bad_fields,
+        )
+    except UnresolvedTarget as exc:
+        outcome = SaveOutcome(None, str(exc))
 
-        elif intent == "UPDATE_CONTACT":
-            entity_type = "contact"
-            # Look up existing contact by _entity_id or by name
-            existing = None
-            eid = data.get("_entity_id")
-            if eid:
-                result = await db.execute(
-                    select(Contact).where(Contact.id == UUID(eid), Contact.user_id == user_id)
-                )
-                existing = result.scalar_one_or_none()
-            if not existing and data.get("name"):
-                result = await db.execute(
-                    select(Contact).where(
-                        Contact.user_id == user_id,
-                        Contact.name.ilike(f"%{data['name']}%"),
-                    ).limit(1)
-                )
-                existing = result.scalar_one_or_none()
-
-            if existing:
-                # Update only non-empty fields
-                for field_name in ("name", "email", "phone", "company", "notes"):
-                    val = data.get(field_name)
-                    if val:
-                        setattr(existing, field_name, val)
-                entity_id = existing.id
-            else:
-                # No existing contact found — create new
-                contact = Contact(
-                    user_id=user_id,
-                    name=data.get("name", ""),
-                    email=data.get("email", ""),
-                    phone=data.get("phone", ""),
-                    company=data.get("company", ""),
-                    notes=data.get("notes", ""),
-                )
-                db.add(contact)
-                await db.flush()
-                entity_id = contact.id
-
-        elif intent == "ADD_DEAL":
-            entity_type = "deal"
-            deal = Deal(
-                user_id=user_id,
-                title=data.get("title", "Untitled Deal"),
-                value=float(data.get("value", 0)),
-                stage=data.get("stage", "lead"),
-                notes=data.get("notes", ""),
-            )
-            # Try to link to a contact by name
-            contact_name = data.get("contact_name")
-            if contact_name:
-                result = await db.execute(
-                    select(Contact).where(
-                        Contact.user_id == user_id,
-                        Contact.name.ilike(f"%{contact_name}%"),
-                    ).limit(1)
-                )
-                contact = result.scalar_one_or_none()
-                if contact:
-                    deal.contact_id = contact.id
-
-            db.add(deal)
-            await db.flush()
-            entity_id = deal.id
-
-        elif intent == "UPDATE_DEAL":
-            entity_type = "deal"
-            existing = None
-            eid = data.get("_entity_id")
-            if eid:
-                result = await db.execute(
-                    select(Deal).where(Deal.id == UUID(eid), Deal.user_id == user_id)
-                )
-                existing = result.scalar_one_or_none()
-            if not existing and data.get("title"):
-                result = await db.execute(
-                    select(Deal).where(
-                        Deal.user_id == user_id,
-                        Deal.title.ilike(f"%{data['title']}%"),
-                    ).limit(1)
-                )
-                existing = result.scalar_one_or_none()
-
-            if existing:
-                for field_name in ("title", "stage", "notes"):
-                    val = data.get(field_name)
-                    if val:
-                        setattr(existing, field_name, val)
-                val = data.get("value")
-                if val is not None:
-                    existing.value = float(val)
-                entity_id = existing.id
-            else:
-                deal = Deal(
-                    user_id=user_id,
-                    title=data.get("title", "Untitled Deal"),
-                    value=float(data.get("value", 0)),
-                    stage=data.get("stage", "lead"),
-                    notes=data.get("notes", ""),
-                )
-                db.add(deal)
-                await db.flush()
-                entity_id = deal.id
-
-        elif intent == "LOG_ACTIVITY":
-            entity_type = "activity"
-            activity = Activity(
-                user_id=user_id,
-                type=data.get("type", "note"),
-                description=data.get("description", ""),
-                occurred_at=datetime.utcnow(),
-            )
-            # Try to link to a contact
-            contact_name = data.get("contact_name")
-            if contact_name:
-                result = await db.execute(
-                    select(Contact).where(
-                        Contact.user_id == user_id,
-                        Contact.name.ilike(f"%{contact_name}%"),
-                    ).limit(1)
-                )
-                contact = result.scalar_one_or_none()
-                if contact:
-                    activity.contact_id = contact.id
-
-            db.add(activity)
-            await db.flush()
-            entity_id = activity.id
-
-        # Record the action
-        action = ChatAction(
+    db.add(
+        ChatAction(
             session_id=session_id,
             action_type=intent,
             entity_type=entity_type,
-            entity_id=entity_id,
-            status="completed" if entity_id else "failed",
+            entity_id=outcome.entity_id,
+            status="completed" if outcome.entity_id else "failed",
         )
-        db.add(action)
+    )
+    return outcome
 
-    except Exception:
-        logger.exception("Failed to save entity from chat")
-        action = ChatAction(
-            session_id=session_id,
-            action_type=intent,
-            entity_type=entity_type,
-            status="failed",
+
+async def _matching(db: AsyncSession, model: type[Contact] | type[Deal], column: Any, user_id: UUID, value: str) -> list:
+    """Rows of the user's `model` whose `column` equals `value`, ignoring case (never a LIKE)."""
+    result = await db.scalars(
+        select(model).where(model.user_id == user_id, func.lower(column) == value.lower()).limit(5)
+    )
+    return list(result.all())
+
+
+async def _resolve(
+    db: AsyncSession, model: type[Contact] | type[Deal], column: Any, user_id: UUID, value: str, entity_ref: str | None
+) -> Any:
+    """Find the record an update refers to: the server-side id first, else one exact name match."""
+    label = model.__tablename__[:-1]
+    if entity_ref:
+        row = (await db.scalars(select(model).where(model.id == UUID(entity_ref), model.user_id == user_id))).first()
+        if row:
+            return row
+    rows = await _matching(db, model, column, user_id, value)
+    if not rows:
+        raise UnresolvedTarget(f'I couldn\'t find a {label} called "{value}". Check the name, or ask me to add it.')
+    if len(rows) > 1:
+        raise UnresolvedTarget(
+            f'I found {len(rows)} {label}s called "{value}". Tell me which one, or update it from the {label} page.'
         )
-        db.add(action)
+    return rows[0]
 
-    return entity_id
+
+async def _single_id(db: AsyncSession, model: type[Contact] | type[Deal], column: Any, user_id: UUID, value: str) -> UUID | None:
+    """Id of the one exact match for an optional link (deal -> contact), else no link."""
+    rows = await _matching(db, model, column, user_id, value) if value else []
+    return rows[0].id if len(rows) == 1 else None
+
+
+def _changes(action: ContactFields | DealFields, skip: str) -> dict[str, Any]:
+    """Fields the user actually supplied, minus the lookup key and empty values."""
+    return {
+        k: v for k, v in action.model_dump(exclude_unset=True).items()
+        if k not in (skip, "contact_name") and v not in ("", [], None)
+    }
+
+
+async def _add_contact(db: AsyncSession, user_id: UUID, session_id: UUID, action: ContactFields, _: str | None) -> UUID:
+    contact = Contact(user_id=user_id, source="ai_chat", ai_session_id=session_id, **action.model_dump())
+    db.add(contact)
+    await db.flush()
+    return contact.id
+
+
+async def _update_contact(
+    db: AsyncSession, user_id: UUID, session_id: UUID, action: ContactFields, entity_ref: str | None
+) -> UUID:
+    contact = await _resolve(db, Contact, Contact.name, user_id, action.name, entity_ref)
+    for field_name, value in _changes(action, skip="" if entity_ref else "name").items():
+        setattr(contact, field_name, value)
+    await db.flush()
+    return contact.id
+
+
+async def _add_deal(db: AsyncSession, user_id: UUID, session_id: UUID, action: DealFields, _: str | None) -> UUID:
+    deal = Deal(
+        user_id=user_id,
+        title=action.title,
+        value=action.value or 0,
+        stage=action.stage or "lead",
+        expected_close=action.expected_close,
+        notes=action.notes,
+        contact_id=await _single_id(db, Contact, Contact.name, user_id, action.contact_name),
+        source="ai_chat",
+        ai_session_id=session_id,
+    )
+    db.add(deal)
+    await db.flush()
+    return deal.id
+
+
+async def _update_deal(
+    db: AsyncSession, user_id: UUID, session_id: UUID, action: DealFields, entity_ref: str | None
+) -> UUID:
+    deal = await _resolve(db, Deal, Deal.title, user_id, action.title, entity_ref)
+    for field_name, value in _changes(action, skip="" if entity_ref else "title").items():
+        setattr(deal, field_name, value)
+    if action.contact_name:
+        deal.contact_id = await _single_id(db, Contact, Contact.name, user_id, action.contact_name) or deal.contact_id
+    await db.flush()
+    return deal.id
+
+
+async def _log_activity(db: AsyncSession, user_id: UUID, session_id: UUID, action: ActivityFields, _: str | None) -> UUID:
+    activity = Activity(
+        user_id=user_id,
+        type=action.activity_type,
+        description=action.description,
+        occurred_at=datetime.now(timezone.utc),
+        contact_id=await _single_id(db, Contact, Contact.name, user_id, action.contact_name),
+        deal_id=await _single_id(db, Deal, Deal.title, user_id, action.deal_title),
+    )
+    db.add(activity)
+    await db.flush()
+    return activity.id
+
+
+_WRITERS: dict[str, Callable[..., Awaitable[UUID]]] = {
+    "ADD_CONTACT": _add_contact,
+    "UPDATE_CONTACT": _update_contact,
+    "ADD_DEAL": _add_deal,
+    "UPDATE_DEAL": _update_deal,
+    "LOG_ACTIVITY": _log_activity,
+}

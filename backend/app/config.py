@@ -17,6 +17,13 @@ class Settings(BaseSettings):
     # ── Redis ──
     REDIS_URL: str = "redis://redis:6379/0"
 
+    # ── HTTP ──
+    # Comma-separated browser origins allowed by CORS (nginx serves the SPA same-origin)
+    CORS_ORIGINS: str = "http://localhost:3500,http://localhost:5173"
+    # Serve /api/docs and /api/openapi.json only when explicitly enabled
+    ENABLE_DOCS: bool = False
+    LOG_LEVEL: str = "INFO"
+
     # ── AWS (for AI features) ──
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
@@ -25,6 +32,10 @@ class Settings(BaseSettings):
     BEDROCK_ENABLED: bool = True
     BEDROCK_MAX_TOKENS: int = 220
     BEDROCK_TEMPERATURE: float = 0.2
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
 
 settings = Settings()

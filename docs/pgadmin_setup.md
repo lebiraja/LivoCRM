@@ -4,20 +4,20 @@ This guide explains how to start and connect to the local PostgreSQL database us
 
 ## 1. Start the pgAdmin Container
 
-If it's not already running, start the `pgadmin` service using Docker Compose from the project root:
+pgAdmin is in the `dev` profile, so a plain `docker compose up` does not start it. Start it explicitly from the project root:
 
 ```bash
-docker compose up -d pgadmin
+docker compose --profile dev up -d pgadmin
 ```
 
-*(Note: The container is configured to use `admin@livocrm.com` as the default email to bypass pgAdmin's reserved `.local` top-level domain restrictions).*
+It listens on `127.0.0.1` only, so it is reachable from this machine and not from the network. Postgres itself publishes no host port; pgAdmin reaches it over the internal `livocrm` Docker network.
 
 ## 2. Log In to pgAdmin
 
-1. Open your web browser and navigate to: **http://localhost:5050**
-2. Log in using the following default credentials (defined in `docker-compose.yml`):
-   * **Email**: `admin@livocrm.com`
-   * **Password**: `admin`
+1. Open your web browser and navigate to: **http://127.0.0.1:5050**
+2. Log in with the credentials you set in your local `.env` (never commit them):
+   * **Email**: `PGADMIN_DEFAULT_EMAIL`
+   * **Password**: `PGADMIN_DEFAULT_PASSWORD`
 
 ## 3. Register the LivoCRM Database Server
 
@@ -39,7 +39,7 @@ Fill in these details exactly as shown (these match your `.env` variables):
 | **Port** | `5432` | Inside the Docker network, PostgreSQL listens on its native port. |
 | **Maintenance database** | `livocrm` | |
 | **Username** | `livocrm_user` | |
-| **Password** | `supersecretpassword` | |
+| **Password** | value of `POSTGRES_PASSWORD` in `.env` | `change-me` in `.env.example` is a placeholder; generate your own. |
 | **Save password** | ✅ (Checked) | Toggle on so you don't have to re-enter it. |
 
 4. Click the **Save** button.

@@ -75,7 +75,7 @@ DATA_EXTRACTOR_SYSTEM = (
     "You are a data extraction engine for a CRM assistant. "
     "Given a user message and a target entity schema, extract all matching fields. "
     "Respond with ONLY a JSON object containing:\n"
-    '  {{"extracted": {{...fields...}}, "missing_required": [list of required fields not found]}}\n\n'
+    '  {"extracted": {...fields...}, "missing_required": [list of required fields not found]}\n\n'
     "Rules:\n"
     "- Only include fields you are confident about from the message.\n"
     "- For missing optional fields, omit them (don't set null).\n"

@@ -19,9 +19,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { dealsApi } from "@/api/deals";
 import type { Deal, DealCreate, DealStage } from "@/types";
 import { cn } from "@/lib/utils";
+import { formatINR } from "@/lib/format";
 
 // Static pipeline stages – the API has no stages endpoint
 const STAGE_DEFS: { id: DealStage; label: string; color: string }[] = [
@@ -35,12 +37,6 @@ const STAGE_DEFS: { id: DealStage; label: string; color: string }[] = [
 
 
 
-
-function formatCurrency(n: number) {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
-  return `$${n}`;
-}
 
 const EMPTY_FORM: DealCreate = {
   title: "",
@@ -63,8 +59,8 @@ export default function PipelinePage() {
     try {
       const response = await dealsApi.list();
       setDeals(response.items);
-    } catch (err) {
-      console.error("Failed to load deals:", err);
+    } catch {
+      toast.error("Failed to load deals");
       setDeals([]);
     } finally {
       setLoading(false);
@@ -96,8 +92,8 @@ export default function PipelinePage() {
     );
     try {
       await dealsApi.moveStage(draggedId, stage);
-    } catch (err) {
-      console.error("Failed to move deal stage:", err);
+    } catch {
+      toast.error("Failed to move deal");
       // Revert on failure by reloading
       loadData();
     }
@@ -115,9 +111,8 @@ export default function PipelinePage() {
     try {
       const created = await dealsApi.create(payload);
       setDeals((prev) => [...prev, created]);
-    } catch (err) {
-      console.error("Failed to create deal:", err);
-      alert("Failed to create deal. Please try again.");
+    } catch {
+      toast.error("Failed to create deal. Please try again.");
       return; // Don't close dialog on failure
     }
     setDialogOpen(false);
@@ -191,7 +186,7 @@ export default function PipelinePage() {
                   </Badge>
                 </div>
                 <span className="text-xs font-medium text-muted-foreground">
-                  {formatCurrency(total)}
+                  {formatINR(total, { compact: true })}
                 </span>
               </div>
 
@@ -224,7 +219,7 @@ export default function PipelinePage() {
                       </div>
                       <div className="flex items-center gap-1 text-xs font-semibold text-emerald-500">
                         <DollarSign className="h-3 w-3" />
-                        {formatCurrency(deal.value)}
+                        {formatINR(deal.value, { compact: true })}
                       </div>
                     </div>
                   </motion.div>
@@ -264,7 +259,7 @@ export default function PipelinePage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Value ($)</Label>
+                <Label>Value (₹)</Label>
                 <Input
                   type="number"
                   value={form.value || ""}

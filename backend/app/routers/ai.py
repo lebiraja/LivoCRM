@@ -1,6 +1,7 @@
 """AI router — lead scoring and AI-generated insights."""
 
 import asyncio
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,8 +13,9 @@ from app.models.contact import Contact
 from app.models.activity import Activity
 from app.models.deal import Deal
 from app.models.user import User
-from app.services.bedrock_service import get_insights
+from app.services.bedrock_service import get_insights, llm_slots
 from app.services.lead_scoring import score_contact
+from app.services.rate_limit import rate_limit, user_key
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
@@ -33,9 +35,11 @@ async def lead_score(
         raise HTTPException(status_code=404, detail="Contact not found")
 
     # Gather activity stats
-    activity_count = (await db.execute(
-        select(func.count()).select_from(Activity).where(Activity.contact_id == contact_id)
-    )).scalar() or 0
+    activity_count, last_activity = (await db.execute(
+        select(func.count(), func.max(Activity.occurred_at)).where(
+            Activity.contact_id == contact_id, Activity.user_id == user.id
+        )
+    )).one()
 
     contact_data = {
         "company": contact.company,
@@ -45,11 +49,14 @@ async def lead_score(
         "notes": contact.notes,
         "activity_count": activity_count,
     }
+    # Without any activity the model's training default (30 days) applies
+    if last_activity:
+        contact_data["days_since_last_activity"] = (datetime.now(timezone.utc) - last_activity).days
     result = score_contact(contact_data)
     return {"contact_id": str(contact_id), **result}
 
 
-@router.post("/insights")
+@router.post("/insights", dependencies=[Depends(rate_limit("insights", 10, 3600, user_key))])
 async def insights(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
@@ -87,5 +94,6 @@ async def insights(
         "proposal_deals": int(proposal_deals),
     }
 
-    insights, generated_by = await asyncio.to_thread(get_insights, metrics)
+    async with llm_slots:
+        insights, generated_by = await asyncio.to_thread(get_insights, metrics)
     return {"insights": insights, "generated_by": generated_by}

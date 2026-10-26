@@ -98,7 +98,7 @@ class ChatAction(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "status IN ('pending','confirmed','rejected','completed')",
+            "status IN ('pending','confirmed','rejected','completed','failed')",
             name="ck_chat_actions_status"
         ),
         CheckConstraint(

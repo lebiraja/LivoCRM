@@ -70,7 +70,7 @@ def extract_data(
             temperature=0.0,
         )
     except BedrockServiceError as exc:
-        logger.warning(f"Data extraction failed (BedrockServiceError): {exc}")
+        logger.warning("Data extraction failed: %s", type(exc).__name__)
         return ExtractionResult(extracted=already_collected or {})
 
     try:
@@ -79,7 +79,8 @@ def extract_data(
             cleaned = cleaned.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
         data = json.loads(cleaned)
 
-        extracted = data.get("extracted", {})
+        # Model output may only fill schema fields: never ids or invented keys (SEC-05)
+        extracted = {k: v for k, v in data.get("extracted", {}).items() if k in schema}
 
         # Merge: anything already collected + newly extracted
         merged = {**already, **extracted}
@@ -96,8 +97,9 @@ def extract_data(
             raw_response=raw,
         )
     except json.JSONDecodeError:
-        logger.warning(f"Failed to parse extractor response: {raw}")
+        # Never log the reply itself: it echoes names, phones and emails
+        logger.warning("Extractor reply was not JSON (%d chars)", len(raw))
         return ExtractionResult(extracted=already, raw_response=raw)
     except Exception as exc:
-        logger.warning(f"Unexpected error in extract_data: {exc}")
+        logger.warning("Unexpected error in extract_data: %s", type(exc).__name__)
         return ExtractionResult(extracted=already, raw_response=raw)
