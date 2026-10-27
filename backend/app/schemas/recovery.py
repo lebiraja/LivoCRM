@@ -22,3 +22,5 @@ class RecoverySummary(BaseModel):
 class DemoSeedResponse(BaseModel):
     contacts: int
     appointments: int
+    deals: int = 0
+    activities: int = 0
