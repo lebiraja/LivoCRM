@@ -49,6 +49,7 @@ Frontend tests (`npm test` in `frontend/`) and the suite breakdown are in [docs/
 |---|---|
 | [docs/architecture.md](docs/architecture.md) | Services, request flows, auth and WebSocket tickets, chat confirm flow, recovery engine, data model (ER diagram) |
 | [docs/docker.md](docs/docker.md) | Compose services, profiles, ports, healthchecks, environment variables, run and test commands |
+| [cloud/deploy/cloudflare-server.md](cloud/deploy/cloudflare-server.md) | Production server deployment through Cloudflare Tunnel |
 | [docs/API.md](docs/API.md) | Every `/api` route with auth, body, response, errors and rate limits; WebSocket contract |
 | [docs/ai.md](docs/ai.md) | LLM providers, Groq key pool, failover, health endpoint, fallbacks |
 | [docs/security.md](docs/security.md) | Security findings (SEC-01 to SEC-29) with status and where each is enforced |

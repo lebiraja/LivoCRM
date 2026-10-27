@@ -56,7 +56,9 @@ openssl rand -hex 32   # use the output as SECRET_KEY
 | `REDIS_MAXMEMORY` | `128mb` | redis | `maxmemory`, policy `allkeys-lru` |
 | `SECRET_KEY` | `change-me` | backend | JWT signing key, 32+ characters, required |
 | `ALGORITHM` | `HS256` | backend | JWT algorithm |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | `480` (code default `30`) | backend | Token lifetime |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | backend | Browser session token lifetime |
+| `AUTH_COOKIE_SECURE` | `false` (Cloudflare prod override: `true`) | backend | Require HTTPS before sending the session cookie |
+| `ALLOW_REGISTRATION` | `true` (Cloudflare prod override: `false`) | backend | Public account creation; production account creation uses the CLI |
 | `CORS_ORIGINS` | `http://localhost:3500,http://localhost:5173` | backend | Comma-separated allowed origins |
 | `ENABLE_DOCS` | `false` | backend | Serve `/api/docs` and `/api/openapi.json` when `true` |
 | `LOG_LEVEL` | `INFO` | backend | Root log level |
@@ -117,8 +119,9 @@ docker compose --profile dev up -d pgadmin    # http://127.0.0.1:5050
 Stop: `docker compose down` keeps volumes. `docker compose down -v` deletes the database. Confirm
 before running it.
 
-Production: `cloud/deploy/docker-compose.prod.yml` overrides this file for an EC2 host behind Caddy.
-See `cloud/deploy/README.md`. That path has not been run.
+Production with Cloudflare Tunnel: use `docker-compose.cloudflare.yml` with this file. It disables
+Nginx's host port and serves the app through `cloudflared`; see `cloud/deploy/cloudflare-server.md`.
+The AWS EC2 deployment path remains in `cloud/deploy/README.md` and uses its Caddy override.
 
 ## Tests
 

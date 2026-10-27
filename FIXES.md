@@ -4,6 +4,12 @@ Real bug fixes only. Newest on top. Each entry: symptom, root cause, fix with `f
 
 _Findings come from `docs/plan/01-code-audit.md` and `docs/plan/02-security-review.md`; each one that gets fixed is logged below the template._
 
+## 2026-10-27 · Production Cloudflare ingress and browser session security
+- **Symptom:** the existing app stack had a host-published Nginx port for local use, and browser login kept its JWT in `localStorage`; production registration was public.
+- **Fix:** added `docker-compose.cloudflare.yml` with a pinned Cloudflare Tunnel container, tunnel token supplied as a Docker secret, a dedicated network to Nginx, and no host-published app ports. Nginx now trusts only the tunnel's private IP for `CF-Connecting-IP`. Browser auth now uses short-lived HttpOnly/SameSite=Lax cookies, Secure in production, with logout; API bearer tokens remain supported. Production disables registration and uses `python -m app.cli create-user`. Added a production env template, server deployment runbook and local database backup script.
+- **Verification:** `docker compose -f docker-compose.yml -f docker-compose.cloudflare.yml config --quiet`, `bash -n cloud/deploy/backup-local.sh`, and `git diff --check` pass. The backend test image build could not download dependencies because container DNS could not resolve the package index; no tests or app images were built, per Lebi's instruction.
+- **Limitations:** single-server setup; no MFA, email verification, password reset or JWT deny-list. Add an off-server backup target for disaster recovery.
+
 ## Entry template
 ```
 ## YYYY-MM-DD · <short title>

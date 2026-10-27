@@ -1,14 +1,31 @@
 import client from "./client";
-import type { AuthToken, User } from "@/types";
+import type { User } from "@/types";
+
+interface LoginResponse {
+  authenticated: boolean;
+}
+
+export interface AuthConfig {
+  registration_enabled: boolean;
+}
 
 export const authApi = {
-  /** POST /auth/login  — JSON body { email, password } → { access_token, token_type } */
-  login: async (email: string, password: string): Promise<AuthToken> => {
-    const { data } = await client.post<AuthToken>("/auth/login", {
+  getConfig: async (): Promise<AuthConfig> => {
+    const { data } = await client.get<AuthConfig>("/auth/config");
+    return data;
+  },
+
+  /** POST /auth/login — establishes an HttpOnly browser session cookie. */
+  login: async (email: string, password: string): Promise<LoginResponse> => {
+    const { data } = await client.post<LoginResponse>("/auth/login", {
       email,
       password,
     });
     return data;
+  },
+
+  logout: async (): Promise<void> => {
+    await client.post("/auth/logout");
   },
 
   /** POST /auth/register */

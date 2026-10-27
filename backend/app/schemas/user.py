@@ -34,9 +34,8 @@ class UserRead(BaseModel):
     created_at: datetime
 
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
+class LoginResponse(BaseModel):
+    authenticated: bool = True
 
 
 class LoginRequest(BaseModel):
