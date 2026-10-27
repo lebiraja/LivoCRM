@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str = ""  # Must be provided via .env (minimum 32 chars)
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    AUTH_COOKIE_SECURE: bool = False
+    AUTH_COOKIE_NAME: str = "livocrm_session"
+    ALLOW_REGISTRATION: bool = True
 
     # ── Redis ──
     REDIS_URL: str = "redis://redis:6379/0"

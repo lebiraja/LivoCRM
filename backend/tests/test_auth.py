@@ -72,7 +72,23 @@ async def test_login_ok_case_insensitive(client: AsyncClient) -> None:
     response = await client.post("/api/auth/login", json={"email": "Carol@Example.com", "password": PASSWORD})
 
     assert response.status_code == 200
-    assert response.json()["token_type"] == "bearer"
+    assert response.json() == {"authenticated": True}
+    cookie = response.headers["set-cookie"].lower()
+    assert "httponly" in cookie
+    assert "samesite=lax" in cookie
+    assert "livocrm_session=" in cookie
+
+
+async def test_login_cookie_authenticates_and_logout_clears_it(client: AsyncClient) -> None:
+    await _register(client, "cookie@example.com")
+    login = await client.post("/api/auth/login", json={"email": "cookie@example.com", "password": PASSWORD})
+
+    assert login.status_code == 200
+    assert (await client.get("/api/auth/me")).status_code == 200
+    logout = await client.post("/api/auth/logout")
+    assert logout.status_code == 204
+    assert "max-age=0" in logout.headers["set-cookie"].lower()
+    assert (await client.get("/api/auth/me")).status_code == 401
 
 
 async def test_login_unknown_user_does_hash(

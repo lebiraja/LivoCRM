@@ -1,0 +1,46 @@
+# Production ingress using a remotely-managed Cloudflare Tunnel.
+# Run together with docker-compose.yml; the tunnel route in Cloudflare must point to
+# http://nginx:80. No app/database ports are published to the host.
+
+services:
+  nginx:
+    ports: !reset []
+    networks:
+      livocrm: {}
+      tunnel-edge:
+        ipv4_address: 172.30.240.3
+
+  backend:
+    environment:
+      AUTH_COOKIE_SECURE: "true"
+      ENABLE_DOCS: "false"
+      ALLOW_REGISTRATION: "false"
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.4
+    command: ["tunnel", "run", "--token-file", "/run/secrets/cloudflare_tunnel_token"]
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    secrets:
+      - cloudflare_tunnel_token
+    depends_on:
+      nginx:
+        condition: service_healthy
+    networks:
+      tunnel-edge:
+        ipv4_address: 172.30.240.2
+
+secrets:
+  cloudflare_tunnel_token:
+    file: ./.secrets/cloudflare_tunnel_token
+
+networks:
+  tunnel-edge:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.240.0/24

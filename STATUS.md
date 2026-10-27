@@ -2,6 +2,12 @@
 
 Session log. Newest entry on top.
 
+## 2026-10-27 · v0.7.0-prod-cloudflare · Production deployment prep
+- **Done:** Cloudflare Tunnel Compose ingress, private tunnel-to-Nginx network, client IP forwarding for rate limits, production environment template, HTTPS-only browser cookies, public registration disabled, password-prompting account CLI, local PostgreSQL backup script, updated deployment/security docs. Nginx host port is removed in the production override.
+- **Verification:** Compose config, backup script syntax, and whitespace checks pass. Backend test image build was stopped after external package DNS resolution failed; no app image was built per Lebi's instruction.
+- **Deploy prerequisites:** create a Cloudflare named tunnel and published route (`livocrm.lebiraja.in` → `http://nginx:80`), put its token in `.secrets/cloudflare_tunnel_token`, fill `.env` from `.env.production.example`, then follow `cloud/deploy/cloudflare-server.md`. Local server setup remains for Lebi to do.
+- **Known limits:** single server; no MFA, password reset/email verification, JWT deny-list, or automated off-host backup. Groq keys and the Cloudflare token must stay out of Git.
+
 ## 2026-10-26 · v0.6.0-docs · Phase 4 docs
 - **Done:** `docs/architecture.md`, `docker.md`, `API.md`, `ai.md`, `security.md`, `testing.md`, refreshed `README.md`, both IA3 report outlines (`docs/ia3-fullstack-report-outline.md`, `docs/cloud/report-outline.md`, skeletons with `TO FILL` markers, no invented results). Stale pre-IA3 docs moved to `docs/archive/`.
 - **Caveat:** docs were written by a Haiku agent from code; test counts and coverage are copied from STATUS, not re-run in that pass. Re-verify before submission.

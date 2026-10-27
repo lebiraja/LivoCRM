@@ -5,7 +5,7 @@ Browsers reach them through nginx on `http://localhost:3500`. The backend port i
 
 ## Conventions
 
-- **Auth.** `Authorization: Bearer <JWT>` (HS256; claims `sub` = user UUID, `iat`, `exp`, `jti`). Missing or
+- **Auth.** Browser requests use the HttpOnly `livocrm_session` cookie; API clients may use `Authorization: Bearer <JWT>` (HS256; claims `sub` = user UUID, `iat`, `exp`, `jti`). Missing or
   invalid token: `401 {"detail": "Not authenticated"}` or `"Invalid or expired token"`. Every query is scoped
   to the caller's `user_id`; another user's id returns `404`.
 - **Pagination.** Collection endpoints marked *paged* take `skip` (default 0) and `limit`. Response shape:
@@ -35,14 +35,16 @@ nginx also serves `GET /healthz` (plain `ok`), used by the container healthcheck
 
 | Method | Path | Auth | Rate limit | Body | Success | Errors |
 |---|---|---|---|---|---|---|
+| GET | `/api/auth/config` | none | — | — | `200` registration setting | — |
 | POST | `/api/auth/register` | none | 3 per hour per client IP | `UserCreate` | `201` `UserRead` | `409` "Could not register with these details"; `422` |
-| POST | `/api/auth/login` | none | 5 per 60 s per IP+email | `LoginRequest` | `200` `Token` | `401` "Invalid credentials"; `429` |
-| GET | `/api/auth/me` | Bearer | - | - | `200` `UserRead` | `401` |
+| POST | `/api/auth/login` | none | 5 per 60 s per IP+email | `LoginRequest` | `200` session cookie | `401` "Invalid credentials"; `429` |
+| POST | `/api/auth/logout` | none | — | — | `204` clears the session cookie | — |
+| GET | `/api/auth/me` | Session cookie or Bearer | - | - | `200` `UserRead` | `401` |
 
 - `UserCreate`: `email` (valid address, stored lower-case), `password` (10 to 72 UTF-8 bytes), `full_name`
   (max 255, default `""`). Registration seeds six default pipeline stages (Lead to Closed Lost).
 - `LoginRequest`: `email`, `password`.
-- `Token`: `{"access_token": str, "token_type": "bearer"}`. Lifetime is `ACCESS_TOKEN_EXPIRE_MINUTES`.
+- Browser login sets an HttpOnly, SameSite=Lax cookie (Secure in production); `GET /api/auth/me` accepts it. API clients can use `Authorization: Bearer <JWT>`. Session lifetime is `ACCESS_TOKEN_EXPIRE_MINUTES`.
 - `UserRead`: `{id, email, full_name, plan, created_at}`.
 
 ## Contacts (`/api/contacts/`)

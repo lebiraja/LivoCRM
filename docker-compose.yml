@@ -10,6 +10,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
     # NOT exposed to host — use the dev-profile pgAdmin (see docs/pgadmin_setup.md)
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
@@ -80,7 +81,7 @@ services:
 
   # ── Nginx reverse proxy (single public entry point) ─────────────────────
   nginx:
-    image: nginx:1.27-alpine
+    image: nginx:1.30.6-alpine
     ports:
       - "3500:80"      # http://localhost:3500 — free on this machine
     volumes:

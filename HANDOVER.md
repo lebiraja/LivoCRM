@@ -1,14 +1,14 @@
 # HANDOVER
 
-> Version: v0.6.0-docs · Last changed: 2026-10-26
+> Version: v0.7.0-prod-cloudflare · Last changed: 2026-10-27
 
-## Current (v0.6.0-docs)
+## Current (v0.7.0-prod-cloudflare)
 
 ### What this is
-LivoCRM reused for Full Stack Development IA3 (30 marks: front-end, back-end, functionality, presentation, innovation, documentation) and as a demo for the Tamil follow-up desk startup idea (clinics first). Stack: FastAPI, React/Vite + Tailwind + shadcn/ui, PostgreSQL, Redis, Nginx, Docker Compose. **Do not change the stack.** AI layer is moving to the Groq API.
+LivoCRM reused for Full Stack Development IA3 and the Cloud Computing IA3 demo. Stack: FastAPI, React/Vite + Tailwind + shadcn/ui, PostgreSQL, Redis, Nginx, Docker Compose. The frontend has been restored to the original cloned UI; Tamil and the Ledger redesign were removed. Groq powers the AI backend.
 
 ### Where we are
-Phase 0 (gate 0) is done and merged: security fixes, tests, cleanup. Master plan: `docs/plan/00-master-plan.md`. Phases 0-3 and the Phase 6 AWS artifacts are merged. Docs are done (`docs/*.md`, report outlines). Remaining: write the two IA3 reports and PPT from the outlines, re-run all suites for fresh numbers, then Lebi's AWS console steps (`cloud/deploy/README.md`). The three Groq keys are in the gitignored `.env` as `GROQ_API_KEYS`. Estimated work is 128-178 h; scope must be cut before starting. Read, in this order:
+Phases 0-4 and the Cloud artifacts are merged to `main`; synthetic pipeline demo data is included. The original UI exposes Dashboard, Contacts, Pipeline, Chat, Analytics and Settings. Appointments/recovery remain API-only. Production deployment files and runbook are in `cloud/deploy/cloudflare-server.md`; they use Cloudflare Tunnel, secure HttpOnly browser cookies, and a CLI-created first account. Compose config was checked, but test/image builds were not run because the package registry could not resolve and Lebi asked not to build locally. Remaining: fill server `.env`, create Cloudflare tunnel/route, deploy, set off-server backups, and write IA3 reports/PPT. Read:
 1. `docs/plan/README.md` (index of all plan docs)
 2. `docs/plan/03-implementation-plan.md` (phased work)
 3. `docs/plan/02-security-review.md` (Phase 0 fixes)
@@ -17,17 +17,17 @@ Phase 0 (gate 0) is done and merged: security fixes, tests, cleanup. Master plan
 6. `docs/plan/09-ia3-rubric-mapping.md`
 
 ### Next session, do this first
-1. Review the reports with Lebi; agree the cut scope. Suggested keep: Phase 0, Groq migration, follow-up queue and reminder outbox, Tamil/English toggle, Ledger redesign, report and demo kit.
-2. Start Phase 0 from the implementation plan; log each fix in `FIXES.md`.
-3. Then the Groq migration, then UI, then features.
+1. Follow `cloud/deploy/cloudflare-server.md` on the server after creating the Cloudflare route for `livocrm.lebiraja.in`.
+2. Build and start the stack on the server; create the initial login with `python -m app.cli create-user`.
+3. Verify HTTPS login and health, then configure an off-server backup destination and test a restore.
 
 ### Open items
 - IA3 deadline not known; case study wording not seen (faculty confirmed reuse, per Lebi)
-- `origin` is still `lebiraja/LivoCRM` (the DBMS submission); decide on a new remote
-- Groq API key needed from Lebi (never commit it); enable zero data retention
-- Rotate the committed Postgres/pgAdmin passwords (SEC-01) before anything is deployed
-- Groq model names to verify in the Groq console before coding (`openai/gpt-oss-20b`, `openai/gpt-oss-120b`, `whisper-large-v3`)
-- Previous DBMS report in `docs/dbms_academic_report.*`: IA3 must be visibly different
+- The repo remote is `lebiraja/LivoCRM`; push was explicitly requested for this deployment work.
+- Keep the previously supplied Groq keys and the Cloudflare Tunnel token in server-only secret storage, never Git.
+- Rotate any real Postgres, Redis, or JWT secrets reused from an earlier `.env` before deployment.
+- Single-server deployment; MFA, password reset, email verification and session-token revocation are not implemented.
+- Off-server backup destination and restore rehearsal remain operator tasks.
 
 ### Gotchas
 - Run everything in Docker; services talk by network names

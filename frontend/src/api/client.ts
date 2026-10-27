@@ -5,26 +5,17 @@ const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 const client = axios.create({
   baseURL: API_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Attach JWT Bearer on every request
-client.interceptors.request.use((config) => {
-  const token = localStorage.getItem("access_token");
-  if (token && config.headers) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// On 401 → clear token → redirect to login
+// On 401 the browser session is invalid or expired; return to the login page.
 client.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem("access_token");
       if (
         !window.location.pathname.includes("/login") &&
         !window.location.pathname.includes("/register")

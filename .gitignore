@@ -9,6 +9,8 @@ build/
 # ── Env ──
 .env
 *.env.local
+.secrets/
+/backups/
 
 # ── Virtualenv ──
 venv/

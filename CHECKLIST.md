@@ -37,6 +37,15 @@ Master checklist for the IA3 build. Tick items as they are verified, not when st
 - [ ] `docker compose up` clean from scratch, healthchecks green
 - [x] Docs in `docs/` written from the code (re-verify numbers before submission)
 
+## 5a. Production server deployment
+- [x] Cloudflare Tunnel Compose path with no public host ports
+- [x] HttpOnly/Secure browser session cookie and production registration disabled
+- [x] Server deployment and account creation instructions
+- [x] Compose configuration validated
+- [ ] Backend tests and production image builds (not run per Lebi's instruction)
+- [ ] Create Cloudflare tunnel route, provision secrets and deploy on the server
+- [ ] Configure off-server backups and test a restore
+
 ## 6. IA3 deliverables
 - [ ] Project report
 - [ ] PPT

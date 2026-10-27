@@ -6,12 +6,6 @@ export interface User {
   is_active: boolean;
 }
 
-// Token returned by /auth/login
-export interface AuthToken {
-  access_token: string;
-  token_type: string;
-}
-
 // ---------- Contact ----------
 export interface Contact {
   id: string; // UUID
@@ -132,7 +126,6 @@ export interface PaginatedResponse<T> {
 }
 
 // Aliases kept so pages that reference old names don't hard-break
-export type AuthTokens = AuthToken;
 export type DashboardStats = AnalyticsSummary;
 export type StageBreakdown = { stage_name: string; count: number; total_value: number };
 export type RevenueForecast = { month: string; projected: number; actual: number };

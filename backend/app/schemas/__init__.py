@@ -4,7 +4,7 @@ from typing import Generic, TypeVar
 
 from pydantic import BaseModel
 
-from app.schemas.user import UserCreate, UserRead, Token, LoginRequest
+from app.schemas.user import LoginRequest, LoginResponse, UserCreate, UserRead
 from app.schemas.contact import ContactCreate, ContactUpdate, ContactRead
 from app.schemas.deal import DealCreate, DealUpdate, DealRead
 from app.schemas.activity import ActivityCreate, ActivityRead
@@ -20,7 +20,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
     items: list[T]
 
 __all__ = [
-    "UserCreate", "UserRead", "Token", "LoginRequest",
+    "UserCreate", "UserRead", "LoginResponse", "LoginRequest",
     "ContactCreate", "ContactUpdate", "ContactRead",
     "DealCreate", "DealUpdate", "DealRead",
     "ActivityCreate", "ActivityRead",

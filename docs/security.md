@@ -18,7 +18,7 @@ enforces it. Status: **Fixed** (in code, with tests), **Partial**, **Open**.
 | SEC-08 | Parallel confirmations created duplicates | Fixed | `session_manager.session_lock`: Redis `SET NX PX 30000`, owner-checked release; busy turn returns 409 | FIXES; `test_concurrent_confirm_single_entity` |
 | SEC-09 | Foreign keys accepted across tenants | Fixed | `services/ownership.require_owned()` on deal, activity and appointment writes | FIXES; `test_cross_tenant_fk_reference_rejected` |
 | SEC-10 | JWT in WebSocket URL, written to logs | Fixed | Single-use 30 s tickets (`ws_tickets.py`, `GETDEL`); nginx `log_format noargs` uses `$uri` | FIXES: "JWT carried in WebSocket URLs…"; `test_ticket_admits_once`, `test_raw_jwt_rejected` |
-| SEC-11 | Token in `localStorage`; no logout or revocation | **Open** (partial) | `auth_service.py` adds `iat` and random `jti`. Token still lives in `localStorage` (`frontend/src/api/client.ts`). No refresh, no deny-list; a token is valid until `exp` | FIXES (iat/jti part only) |
+| SEC-11 | Browser token storage and session lifecycle | **Partial** | Browser uses a short-lived HttpOnly, SameSite=Lax cookie; Secure is enabled in production. Logout clears the cookie. API bearer tokens remain supported and JWTs are not deny-listed, so a copied token remains valid until expiry | `auth` routes, frontend auth store |
 | SEC-12 | Weak registration and login | Fixed | Password 10-72 UTF-8 bytes (`schemas/user.py`); lower-cased email with unique `lower(email)` index (`0008`); `DUMMY_HASH` on unknown user; generic 409 | FIXES: "Weak registration and login hygiene…" |
 | SEC-13 | PII in logs and raw model output | Fixed | `logging_config.py` masks emails, phones and URL query strings; extractor and classifier log type and length only | FIXES: "PII and raw model output in logs…"; `test_no_pii_in_logs` |
 | SEC-14 | Input validation gaps caused 500s | Fixed | Typed, bounded schemas; `IntegrityError` to 409, `DataError` to 422 (`main.py`); nginx `client_max_body_size 1m` | FIXES: "Invalid input reached the database…"; `test_invalid_payloads_return_422` |
@@ -60,17 +60,18 @@ enforces it. Status: **Fixed** (in code, with tests), **Partial**, **Open**.
 
 ## Authentication model
 
-- Bearer JWT (HS256) signed with `SECRET_KEY` (at least 32 characters, enforced at start-up). Claims: `sub`,
-  `iat`, `exp`, `jti`. Decoding requires `exp` and `iat`.
-- Lifetime is `ACCESS_TOKEN_EXPIRE_MINUTES`: 480 in `.env.example`, 30 in code if unset. There is no
-  revocation before expiry (SEC-11).
+- JWT (HS256) signed with `SECRET_KEY` (at least 32 characters, enforced at start-up). Claims: `sub`,
+  `iat`, `exp`, `jti`. Decoding requires `exp` and `iat`. Browser sessions use an HttpOnly,
+  SameSite=Lax cookie and the production deployment sets `Secure`; API clients may use bearer tokens.
+- Lifetime is `ACCESS_TOKEN_EXPIRE_MINUTES` (30 minutes in the production example). There is no
+  deny-list, so a copied bearer token remains valid until expiry (SEC-11).
 - Passwords: bcrypt via `bcrypt.gensalt()`.
 - Roles: none. Every account is a single owner. A clinic with several staff would need RBAC first.
 
 ## Open items, in priority order
 
 1. **SEC-29** account deletion, data export and a consent record for DPDP.
-2. **SEC-11** token storage: move the token out of `localStorage`, or add refresh and a logout deny-list.
+2. **SEC-11** add refresh and a logout deny-list for revocable sessions; browser storage is now HttpOnly.
 3. **SEC-16** Starlette advisories: upgrade FastAPI, then re-run `pip-audit`.
 4. **SEC-21** delimit untrusted text in prompts and cap prompt sizes on read-only paths.
 5. HSTS at the TLS terminator (`cloud/deploy/Caddyfile`).
