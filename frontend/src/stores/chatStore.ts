@@ -19,6 +19,7 @@ interface ChatState {
   setActiveSessionId: (id: string | null) => void;
   setMessages: (messages: ChatMessage[]) => void;
   addMessage: (message: ChatMessage) => void;
+  updateLastAiMessage: (content: string) => void;
   updateSessionTitle: (sessionId: string, title: string) => void;
   setPendingConfirmation: (confirmation: ConfirmationPayload | null) => void;
   setLoading: (loading: boolean) => void;
@@ -48,6 +49,18 @@ export const useChatStore = create<ChatState>((set) => ({
   setMessages: (messages) => set({ messages }),
   addMessage: (message) =>
     set((s) => ({ messages: [...s.messages, message] })),
+
+  updateLastAiMessage: (content) =>
+    set((s) => {
+      const msgs = [...s.messages];
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        if (msgs[i].role === "assistant") {
+          msgs[i] = { ...msgs[i], content };
+          break;
+        }
+      }
+      return { messages: msgs };
+    }),
 
   updateSessionTitle: (sessionId, title) =>
     set((s) => ({

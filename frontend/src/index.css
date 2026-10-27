@@ -5,121 +5,216 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: 'Geist Variable', 'Noto Sans Tamil Variable', system-ui, sans-serif;
-  --font-serif: ui-serif, Georgia, 'Noto Sans Tamil Variable', serif;
+  --font-sans: 'Geist Variable', system-ui, sans-serif;
   --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+  --font-heading: 'Geist Variable', system-ui, sans-serif;
 
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
-  --color-overdue: var(--overdue);
-  --color-warning: var(--warning);
-  --color-success: var(--success);
-
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
   --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Custom tokens */
+  --color-surface: var(--surface);
+  --color-surface-border: var(--surface-border);
+  --color-indigo: var(--indigo);
+  --color-cyan: var(--cyan-accent);
+  --color-emerald: var(--emerald);
+  --color-rose: var(--rose);
+  --color-amber: var(--amber);
+  --color-text-muted: var(--text-muted);
 }
 
-/* ─── Ledger tokens: warm paper and ink, one deep-green accent ───────
-   Contrast measured with the WCAG 2.2 relative-luminance formula. */
+/* ─── LivoCRM White Mode ─────────────────────────────────────────── */
 :root {
-  color-scheme: light;
-  --radius: 0.375rem;
+  --radius: 0.625rem;
 
-  --background: #F6F1E7; /* paper */
-  --foreground: #1B1A17; /* ink, 15.5:1 */
-  --card: #FBF8F1;
-  --card-foreground: #1B1A17;
-  --popover: #FBF8F1;
-  --popover-foreground: #1B1A17;
-  --primary: #1F5D45; /* deep green accent, 6.9:1 as text */
-  --primary-foreground: #FFFFFF; /* 7.8:1 on accent */
-  --secondary: #EDE6D6;
-  --secondary-foreground: #1B1A17;
-  --muted: #EDE6D6; /* raised paper: table headers, input fill */
-  --muted-foreground: #5C574C; /* 5.8:1 on raised */
-  --accent: #EDE6D6;
-  --accent-foreground: #1B1A17;
-  --destructive: #B3261E;
-  --border: #DDD5C3; /* decorative row rules */
-  --input: #8A8475; /* control outline, 3.3:1 */
-  --ring: #1F5D45;
-  --overdue: #A3411D;
-  --warning: #8A5A00;
-  --success: #2E7D32;
+  /* Base surfaces */
+  --background: #FFFFFF;
+  --foreground: #0F172A;
+
+  /* Cards */
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
+
+  /* Popovers/Dropdowns */
+  --popover: #FFFFFF;
+  --popover-foreground: #0F172A;
+
+  /* Primary — Indigo */
+  --primary: #6366F1;
+  --primary-foreground: #FFFFFF;
+
+  /* Secondary — light slate */
+  --secondary: #F1F5F9;
+  --secondary-foreground: #0F172A;
+
+  /* Muted */
+  --muted: #F8FAFC;
+  --muted-foreground: #64748B;
+
+  /* Accent */
+  --accent: #F1F5F9;
+  --accent-foreground: #0F172A;
+
+  /* Destructive */
+  --destructive: #EF4444;
+
+  /* Borders / Inputs */
+  --border: #E2E8F0;
+  --input: #E2E8F0;
+  --ring: #6366F1;
+
+  /* Chart palette */
+  --chart-1: #6366F1;
+  --chart-2: #06B6D4;
+  --chart-3: #10B981;
+  --chart-4: #F59E0B;
+  --chart-5: #F43F5E;
+
+  /* Sidebar — very subtle off-white */
+  --sidebar: #FAFAFA;
+  --sidebar-foreground: #0F172A;
+  --sidebar-primary: #6366F1;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F1F5F9;
+  --sidebar-accent-foreground: #0F172A;
+  --sidebar-border: #E2E8F0;
+  --sidebar-ring: #6366F1;
+
+  /* Custom */
+  --surface: #F8FAFC;
+  --surface-border: #E2E8F0;
+  --indigo: #6366F1;
+  --cyan-accent: #06B6D4;
+  --emerald: #10B981;
+  --rose: #EF4444;
+  --amber: #F59E0B;
+  --text-muted: #64748B;
 }
 
-.dark {
-  color-scheme: dark;
+/* ─── Utility Classes ────────────────────────────────────────────── */
 
-  --background: #161513;
-  --foreground: #ECE9E2;
-  --card: #1C1B18;
-  --card-foreground: #ECE9E2;
-  --popover: #1C1B18;
-  --popover-foreground: #ECE9E2;
-  --primary: #4FC3A9;
-  --primary-foreground: #0B1F1B;
-  --secondary: #201F1C;
-  --secondary-foreground: #ECE9E2;
-  --muted: #201F1C;
-  --muted-foreground: #A19D93;
-  --accent: #201F1C;
-  --accent-foreground: #ECE9E2;
-  --destructive: #F2766D;
-  --border: #2E2C27;
-  --input: #8B877D;
-  --ring: #4FC3A9;
-  --overdue: #F08A62;
-  --warning: #E0B04A;
-  --success: #6FCF8A;
+/* Card with subtle shadow (replaces dark glass) */
+.card-elevated {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 1px 3px 0 rgba(0,0,0,0.06), 0 1px 2px -1px rgba(0,0,0,0.04);
+  border-radius: var(--radius);
 }
 
+/* Soft indigo glow for focus / hover states */
+.glow-indigo {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+/* Chip / badge surface */
+.chip-surface {
+  background: #EEF2FF;
+  color: #4F46E5;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #6366F1, #8B5CF6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Shimmer animation for number tickers / AI typing */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 25%,
+    #e0e0e0 50%,
+    #f0f0f0 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Pulse for live indicator */
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(1.4); }
+}
+
+/* Bounce for typing dots */
+@keyframes typing-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40%           { transform: translateY(-6px); opacity: 1; }
+}
+
+/* Fade-slide in for chat messages */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.25s ease-out forwards;
+}
+
+/* Number ticker count-up */
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+/* ─── Number font ───────────────────────────────────────────────── */
+.font-mono-nums {
+  font-family: 'Geist Mono Variable', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Base ──────────────────────────────────────────────────────── */
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-
-  body {
-    @apply bg-background text-foreground font-sans antialiased;
-  }
-
-  /* Tamil stacked vowel signs need more leading than Latin */
-  html:lang(ta) body {
-    line-height: 1.7;
-  }
-
-  :focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground font-sans antialiased; }
 }
