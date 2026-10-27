@@ -42,7 +42,7 @@ export default function ChatPage() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="flex h-[calc(100dvh-12rem)] min-w-0 flex-col overflow-hidden border-y border-border md:h-[calc(100dvh-8.5rem)] md:flex-row md:border-y-0"
+      className="flex h-[calc(100vh-4rem)] overflow-hidden rounded-xl border border-border bg-background shadow-sm"
     >
       {/* Session sidebar */}
       <ChatSessionList
@@ -55,38 +55,48 @@ export default function ChatPage() {
       {/* Main chat area */}
       <div className="flex flex-1 flex-col">
         {/* Header bar */}
-        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 md:px-6">
-          <div className="min-w-0">
-            <h1 className="font-serif text-xl leading-tight">AI Assistant</h1>
-            <p className="text-xs text-muted-foreground">Ask anything about your contacts, deals & pipeline</p>
+        <div className="flex items-center justify-between border-b border-border px-6 py-3">
+          <div>
+            <h1 className="text-lg font-semibold text-foreground">
+              AI Assistant
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              Ask anything about your contacts, deals & pipeline
+            </p>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5 text-xs">
+          <div className="flex items-center gap-1.5 text-xs">
             {wsStatus === "connected" ? (
               <>
-                <Wifi size={14} aria-hidden="true" className="text-success" />
-                <span role="status" className="font-medium text-success">Live</span>
+                <Wifi size={14} className="text-emerald-500" />
+                <span className="text-emerald-600 font-medium">Live</span>
               </>
             ) : wsStatus === "connecting" ? (
               <>
-                <Loader2 size={14} aria-hidden="true" className="animate-spin text-warning" />
-                <span role="status" className="font-medium text-warning">Connecting…</span>
+                <Loader2 size={14} className="animate-spin text-amber-500" />
+                <span className="text-amber-600 font-medium">Connecting…</span>
               </>
             ) : (
               <>
-                <WifiOff size={14} aria-hidden="true" className="text-muted-foreground" />
-                <span role="status" className="font-medium text-muted-foreground">Offline</span>
+                <WifiOff size={14} className="text-gray-400" />
+                <span className="text-gray-500 font-medium">Offline</span>
               </>
             )}
           </div>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 space-y-1 overflow-y-auto px-4 py-6">
+        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-1">
           {messages.length === 0 && !loading && (
-            <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
-              <h2 className="font-serif text-2xl text-foreground">How can I help you today?</h2>
-              <p className="max-w-sm text-sm">
-                I can create contacts, manage deals, score leads, and summarise your CRM data. Just ask!
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-lg">
+                <span className="text-2xl font-bold">AI</span>
+              </div>
+              <h2 className="text-xl font-semibold text-foreground mb-1">
+                How can I help you today?
+              </h2>
+              <p className="text-sm max-w-sm">
+                I can create contacts, manage deals, score leads, and
+                summarise your CRM data. Just ask!
               </p>
             </div>
           )}

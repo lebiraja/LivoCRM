@@ -37,15 +37,20 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="relative flex min-h-dvh items-center justify-center bg-background p-4">
+    <div className="mesh-gradient relative flex min-h-screen items-center justify-center p-4">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-emerald/5 blur-[120px]" />
+        <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-primary/5 blur-[120px]" />
+      </div>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-sm"
+        className="glass relative w-full max-w-md rounded-2xl p-8"
       >
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary glow-indigo">
             <Sparkles className="h-7 w-7 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Create account</h1>
@@ -100,7 +105,7 @@ export default function RegisterPage() {
                 value={form.password}
                 onChange={(e) => update("password", e.target.value)}
                 required
-                minLength={8}
+                minLength={10}
                 className="bg-muted/30 pr-10"
               />
               <button

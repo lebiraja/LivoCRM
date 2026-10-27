@@ -6,9 +6,12 @@ import { motion } from "framer-motion";
 export function ChatTypingIndicator() {
   return (
     <div className="flex items-center gap-3 py-3 px-2">
-      <span className="rounded-sm border border-border px-1.5 text-xs font-medium text-muted-foreground">AI</span>
+      {/* AI avatar placeholder */}
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-md">
+        <span className="text-xs font-bold">AI</span>
+      </div>
 
-      <div className="flex items-center gap-1.5 px-1">
+      <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md bg-muted px-4 py-3 shadow-sm">
         {[0, 1, 2].map((i) => (
           <motion.span
             key={i}
