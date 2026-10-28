@@ -1,0 +1,65 @@
+# CI: runs on every PR and push to main. The server deploy (deploy-server.yml) only follows a green main.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secrets-scan:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  backend:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - name: Compose security policy
+        run: |
+          cp .env.example .env
+          python3 scripts/check_compose_policy.py
+      - name: Compose config (production override)
+        run: |
+          TUNNEL_TOKEN=ci docker compose -f docker-compose.yml -f docker-compose.cloudflare.yml config -q
+      - name: Backend tests in the compose test profile
+        run: docker compose --profile test run --rm --build backend-test pytest -q
+
+  frontend:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  images:
+    needs: [backend, frontend]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - name: Production images build
+        run: |
+          docker build --target runtime -t livocrm-backend:ci backend
+          docker build -t livocrm-frontend:ci frontend

@@ -1,0 +1,58 @@
+# CD: after a green `ci` run on main, deploy that exact commit to the server over SSH, then smoke test.
+# Repository secrets:   DEPLOY_SSH_KEY, DEPLOY_HOST, DEPLOY_USER, DEPLOY_KNOWN_HOSTS
+# Repository variables: APP_URL (https://livocrm.lebiraja.in)
+# Manual run: Actions > deploy-server > Run workflow (deploys the current main).
+name: deploy-server
+
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-server
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - name: Resolve commit
+        id: sha
+        run: echo "sha=${{ github.event.workflow_run.head_sha || github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure SSH
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Deploy on the server
+        env:
+          TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
+          SHA: ${{ steps.sha.outputs.sha }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o ServerAliveInterval=30 "$TARGET" \
+            "cd ~/LivoCRM && git fetch --quiet origin main && git show origin/main:scripts/deploy-server.sh > /tmp/deploy-server.sh && bash /tmp/deploy-server.sh $SHA"
+
+  smoke-test:
+    needs: deploy
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Health and login page over HTTPS
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          curl --fail --silent --show-error --retry 10 --retry-delay 6 --retry-all-errors "$APP_URL/api/health"
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors --output /dev/null "$APP_URL/login"

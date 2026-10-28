@@ -92,7 +92,7 @@ export default function ContactsPage() {
       const response = await contactsApi.list({ search, skip: (page - 1) * PAGE_SIZE, limit: PAGE_SIZE });
       setContacts(response.items);
       setTotalPages(Math.max(1, Math.ceil(response.total / PAGE_SIZE)));
-    } catch (err) {
+    } catch {
       toast.error("Failed to load contacts");
       setContacts([]);
       setTotalPages(1);
