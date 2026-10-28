@@ -2,6 +2,12 @@
 
 Session log. Newest entry on top.
 
+## 2026-10-28 · v0.7.1-deployed · Live on EC2 behind Cloudflare Tunnel
+- **Done:** deployed to the Ubuntu 24.04 EC2 host at `~/LivoCRM`; all six services healthy, no host ports published. `https://livocrm.lebiraja.in` serves the app and `/api/health`; first account created via `app.cli create-user`, API login verified through the public URL.
+- **Tunnel:** `TUNNEL_TOKEN` now comes from `.env` (only passed to `cloudflared`), tunnel has a healthcheck and `--url http://nginx:80`. Tunnel `livocrm` was created from the server with `scripts/cf-tunnel-setup.sh <host>` (cloudflared login link, no dashboard token copy); the account cert is deleted after use. The Docker-secret file approach was dropped.
+- **Gotchas:** the login link authorizes the `lebiraja.in` zone, so pass the full hostname `livocrm.lebiraja.in` (a `.tech` host became `livocrm.lebiraja.tech.lebiraja.in`; delete that stray CNAME). Password minimum is 10 characters.
+- **Open:** off-server backups and restore rehearsal; rotate the SSH key and Groq keys that were pasted in chat; `GROQ_API_KEYS` still empty on the server (rule-based AI fallback).
+
 ## 2026-10-27 · v0.7.0-prod-cloudflare · Production deployment prep
 - **Done:** Cloudflare Tunnel Compose ingress, private tunnel-to-Nginx network, client IP forwarding for rate limits, production environment template, HTTPS-only browser cookies, public registration disabled, password-prompting account CLI, local PostgreSQL backup script, updated deployment/security docs. Nginx host port is removed in the production override.
 - **Verification:** Compose config, backup script syntax, and whitespace checks pass. Backend test image build was stopped after external package DNS resolution failed; no app image was built per Lebi's instruction.
