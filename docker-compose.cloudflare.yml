@@ -18,25 +18,28 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:2026.10.4
-    command: ["tunnel", "run", "--token-file", "/run/secrets/cloudflare_tunnel_token"]
+    command: ["tunnel", "--no-autoupdate", "--metrics", "0.0.0.0:2000", "run"]
+    # Only the tunnel token, not the whole .env, same pattern as db
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+    healthcheck:
+      test: ["CMD", "cloudflared", "tunnel", "--metrics", "127.0.0.1:2000", "ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
     restart: unless-stopped
     read_only: true
     security_opt:
       - no-new-privileges:true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=16m
-    secrets:
-      - cloudflare_tunnel_token
     depends_on:
       nginx:
         condition: service_healthy
     networks:
       tunnel-edge:
         ipv4_address: 172.30.240.2
-
-secrets:
-  cloudflare_tunnel_token:
-    file: ./.secrets/cloudflare_tunnel_token
 
 networks:
   tunnel-edge:

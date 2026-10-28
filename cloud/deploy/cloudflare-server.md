@@ -42,22 +42,15 @@ cp .env.production.example .env
 openssl rand -hex 32   # use for POSTGRES_PASSWORD and the matching DATABASE_URL password
 openssl rand -hex 32   # use for REDIS_PASSWORD and the matching REDIS_URL password
 openssl rand -hex 32   # use for SECRET_KEY
-${EDITOR:-nano} .env
+${EDITOR:-nano} .env   # also paste TUNNEL_TOKEN
 chmod 600 .env
-install -d -m 0700 .secrets
-read -rsp 'Cloudflare Tunnel token: ' TUNNEL_TOKEN; echo
-printf '%s' "$TUNNEL_TOKEN" > .secrets/cloudflare_tunnel_token
-unset TUNNEL_TOKEN
-chmod 600 .secrets/cloudflare_tunnel_token
-sudo chown 65532:65532 .secrets/cloudflare_tunnel_token
-sudo chmod 400 .secrets/cloudflare_tunnel_token
 ```
 
 Put the first random value in both `POSTGRES_PASSWORD` and `DATABASE_URL`, and the second in both
 `REDIS_PASSWORD` and `REDIS_URL`. They are hex strings, so they do not need URL escaping. Set
 `GROQ_API_KEYS` if you want AI responses. Registration is disabled in production; create the first
-account through the CLI in the next step. The tunnel token file is owned by UID 65532 because the
-official cloudflared image runs as a non-root user. Do not commit `.env` or `.secrets/`.
+account through the CLI in the next step. `TUNNEL_TOKEN` lives in `.env` and is passed
+only to the `cloudflared` service. Do not commit `.env`.
 
 ## 3. Pull, build, and start
 
