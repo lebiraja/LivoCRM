@@ -23,4 +23,3 @@ touch .env && chmod 600 .env
 sed -i '/^TUNNEL_TOKEN=/d' .env
 printf 'TUNNEL_TOKEN=%s\n' "$TOKEN" >> .env
 echo "Done: TUNNEL_TOKEN written to .env, $HOST -> tunnel $NAME."
-echo "Route service in Cloudflare must be http://nginx:80 (set it under the tunnel's public hostnames if not shown)."
