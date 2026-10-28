@@ -18,7 +18,6 @@ from app.schemas.recovery import DemoSeedResponse
 from app.services.demo_seed import DEMO_PATIENTS
 from tests.conftest import auth_headers
 
-TAMIL_BLOCK = range(0x0B80, 0x0C00)
 PATIENTS = len(DEMO_PATIENTS)
 
 
@@ -37,8 +36,7 @@ async def test_seed_endpoint_builds_clinic_demo(
     assert response.json() == {"contacts": PATIENTS, "appointments": 2 * PATIENTS, "deals": PATIENTS, "activities": 2 * PATIENTS}
     contacts = await _demo_contacts(db, user)
     names = [contact.name for contact in contacts]
-    assert any(ord(char) in TAMIL_BLOCK for name in names for char in name)
-    assert any(name.isascii() for name in names)
+    assert all(name.isascii() for name in names)
     assert all("DEMO" in contact.tags for contact in contacts)
     starts = list((await db.scalars(select(Appointment.starts_at).where(Appointment.user_id == user.id))).all())
     now = datetime.now(UTC)
