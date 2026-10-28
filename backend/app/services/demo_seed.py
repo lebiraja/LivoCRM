@@ -1,4 +1,4 @@
-"""Clinic demo data: Tamil and English patients with past and future visits, pipeline deals across
+"""Clinic demo data: English-named patients with past and future visits, pipeline deals across
 all six stages and activities, all labelled DEMO.
 
 Idempotent per patient: a patient is added only when this user has no demo contact with that
@@ -26,18 +26,18 @@ DEMO_DOMAIN = "demo.livocrm.test"
 DEMO_COMPANY = "Demo Clinic, Coimbatore"
 
 DEMO_PATIENTS: tuple[str, ...] = (
-    "முருகன் ராஜ்",
+    "Murugan Raj",
     "Meena Subramanian",
-    "லட்சுமி",
+    "Lakshmi Narayan",
     "Arun Kumar",
-    "கார்த்திக் வேலு",
+    "Karthik Velu",
     "Priya Nair",
-    "செல்வி",
+    "Selvi Dharan",
     "Vijay Raman",
-    "அன்புச்செல்வன்",
+    "Anbu Chelvan",
     "Divya Selvaraj",
     "Ramesh Babu",
-    "கவிதா",
+    "Kavitha Iyer",
 )
 
 
