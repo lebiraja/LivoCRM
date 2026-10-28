@@ -2,6 +2,13 @@
 
 Session log. Newest entry on top.
 
+## 2026-10-28 · v0.7.2-cicd · CI/CD to the server, Groq keys live
+- **Done:** `.github/workflows/ci.yml` (gitleaks, compose policy + prod config check, backend tests in the compose test profile, frontend lint + build, production image builds) and `deploy-server.yml` (after green CI on main: SSH to the server, `scripts/deploy-server.sh <sha>` builds, `up -d --wait`, rolls back to the previous commit on failure; then HTTPS smoke test). The older `deploy.yml` (AWS ECR/SSM) stays manual-only. Groq keys (3) copied to the server `.env`; backend recreated and sees them.
+- **GitHub setup:** secrets `DEPLOY_SSH_KEY` (dedicated ed25519 key, public half in server `authorized_keys`), `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_KNOWN_HOSTS`; variable `APP_URL`; environment `production`.
+- **Fix on the way:** frontend lint was failing (unused `err` in ContactsPage, shadcn `only-export-components`); fixed so CI is green.
+- **Verification:** CI run and deploy run both green; `/api/health` ok through the tunnel.
+- **Open:** server public IP is not an Elastic IP (it changed between sessions), update `DEPLOY_HOST` if it changes; branch protection requiring CI on main not set.
+
 ## 2026-10-28 · v0.7.1-deployed · Live on EC2 behind Cloudflare Tunnel
 - **Done:** deployed to the Ubuntu 24.04 EC2 host at `~/LivoCRM`; all six services healthy, no host ports published. `https://livocrm.lebiraja.in` serves the app and `/api/health`; first account created via `app.cli create-user`, API login verified through the public URL.
 - **Tunnel:** `TUNNEL_TOKEN` now comes from `.env` (only passed to `cloudflared`), tunnel has a healthcheck and `--url http://nginx:80`. Tunnel `livocrm` was created from the server with `scripts/cf-tunnel-setup.sh <host>` (cloudflared login link, no dashboard token copy); the account cert is deleted after use. The Docker-secret file approach was dropped.
