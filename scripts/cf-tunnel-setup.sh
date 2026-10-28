@@ -15,7 +15,7 @@ cd "$(dirname "$0")/.."
 cf() { docker run --rm -i --user "$(id -u):$(id -g)" -e HOME=/cf -v "$CF_DIR:/cf/.cloudflared" "$IMAGE" "$@"; }
 
 cf tunnel login
-cf tunnel list -o json | grep -q "\"name\":\"$NAME\"" || cf tunnel create "$NAME"
+cf tunnel info "$NAME" >/dev/null 2>&1 || cf tunnel create "$NAME"
 cf tunnel route dns --overwrite-dns "$NAME" "$HOST"
 TOKEN="$(cf tunnel token "$NAME")"
 
